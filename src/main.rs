@@ -4,11 +4,13 @@ mod recipe;
 mod package;
 mod download;
 mod install;
+mod rime_levers;
 
 use recipe::配方名片;
 use package::配方包;
 use download::下載配方包;
 use install::安裝配方;
+use rime_levers::配置補丁;
 
 #[derive(Debug, StructOpt)]
 #[structopt(about = "Rime 配方管理器")]
@@ -57,6 +59,9 @@ fn main() {
                 安裝配方(配方名片::from(rx.as_str()));
             }
         },
+        子命令::Patch { config, key, value } => {
+            配置補丁(&config, &key, &value);
+        }
         _ => todo!("還沒做呢"),
     }
 }
