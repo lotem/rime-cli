@@ -32,7 +32,9 @@ impl From<&str> for 配方包 {
 impl From<配方名片> for 配方包 {
     fn from(source: 配方名片) -> Self {
         let 倉庫 = 配方倉庫地址(&source);
-        Self { 配方: source, 倉庫 }
+        Self {
+            配方: source, 倉庫
+        }
     }
 }
 

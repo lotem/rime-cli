@@ -1,28 +1,24 @@
 use structopt::StructOpt;
 
-mod recipe;
-mod package;
 mod download;
 mod install;
+mod package;
+mod recipe;
 mod rime_levers;
 
-use recipe::配方名片;
-use package::配方包;
 use download::下載配方包;
 use install::安裝配方;
+use package::配方包;
+use recipe::配方名片;
 use rime_levers::配置補丁;
 
 #[derive(Debug, StructOpt)]
 #[structopt(about = "Rime 配方管理器")]
 enum 子命令 {
     /// 下載配方包
-    Download {
-        recipes: Vec<String>,
-    },
+    Download { recipes: Vec<String> },
     /// 安裝配方
-    Install {
-        recipes: Vec<String>,
-    },
+    Install { recipes: Vec<String> },
     /// 配置補丁
     Patch {
         /// 目標配置文件
@@ -53,12 +49,12 @@ fn main() {
             for rx in recipes {
                 下載配方包(配方包::from(rx.as_str()).倉庫);
             }
-        },
+        }
         子命令::Install { ref recipes } => {
             for rx in recipes {
                 安裝配方(配方名片::from(rx.as_str()));
             }
-        },
+        }
         子命令::Patch { config, key, value } => {
             配置補丁(&config, &key, &value);
         }

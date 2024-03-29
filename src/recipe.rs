@@ -28,7 +28,9 @@ impl From<&str> for 配方名片 {
             .split_once('/')
             .map(|(方家, 名字)| (方家.to_owned(), 名字.to_owned()))
             .unwrap_or(("rime".to_owned(), 規範的配方名字(全名)));
-        Self { 方家, 名字, 版本 }
+        Self {
+            方家, 名字, 版本
+        }
     }
 }
 
