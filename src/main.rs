@@ -21,7 +21,7 @@ enum 子命令 {
     Install { recipes: Vec<String> },
     /// 配置補丁
     Patch {
-        /// 目標配置文件
+        /// 目標配置
         config: String,
         /// 紐
         key: String,
@@ -39,7 +39,7 @@ enum 子命令 {
     Deploy,
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     let 命令行參數 = 子命令::from_args();
@@ -56,8 +56,10 @@ fn main() {
             }
         }
         子命令::Patch { config, key, value } => {
-            配置補丁(&config, &key, &value);
+            配置補丁(&config, &key, &value)?;
         }
         _ => todo!("還沒做呢"),
     }
+
+    Ok(())
 }
