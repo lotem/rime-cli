@@ -433,6 +433,7 @@ dependencies = [
  "anyhow",
  "claims",
  "env_logger",
+ "lazy_static",
  "librime-sys",
  "log",
  "structopt",

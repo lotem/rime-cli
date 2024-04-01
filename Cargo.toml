@@ -14,3 +14,4 @@ rime = { package = "librime-sys", git = "https://github.com/lotem/librime-sys.gi
 log = "0.4.21"
 structopt = "0.3.26"
 claims = "0.7.1"
+lazy_static = "1.4.0"
