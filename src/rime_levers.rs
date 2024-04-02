@@ -6,6 +6,7 @@ use std::ffi::CString;
 use std::path::PathBuf;
 
 pub fn 設置引擎啓動參數(工作場地: &PathBuf) -> anyhow::Result<()> {
+    log::debug!("設置引擎啓動參數. 工作場地: {}", 工作場地.display());
     std::fs::create_dir_all(工作場地)?;
     let 場地〇 = CString::new(工作場地.to_str().ok_or(anyhow!("路徑編碼轉換錯誤"))?)?;
     let 品名〇 = CString::new(env!("CARGO_PKG_NAME"))?;
@@ -18,6 +19,14 @@ pub fn 設置引擎啓動參數(工作場地: &PathBuf) -> anyhow::Result<()> {
     啓動參數.distribution_code_name = 品名〇.as_ptr();
     啓動參數.distribution_version = 版本〇.as_ptr();
     rime_api_call!(setup, &mut 啓動參數);
+    Ok(())
+}
+
+pub fn 製備輸入法固件() -> anyhow::Result<()> {
+    log::debug!("製備輸入法固件");
+    rime_api_call!(deployer_initialize, std::ptr::null_mut());
+    rime_api_call!(deploy);
+    rime_api_call!(finalize);
     Ok(())
 }
 
@@ -74,7 +83,7 @@ mod tests {
 
     use claims::assert_ok;
     use lazy_static::lazy_static;
-    use std::fs::{read_to_string, remove_file};
+    use std::fs::{read_to_string, write};
     use std::sync::Once;
 
     lazy_static! {
@@ -85,6 +94,7 @@ mod tests {
 
     fn 預備() {
         預備本場測試.call_once(|| {
+            assert_ok!(std::fs::remove_dir_all(&*測試場地));
             assert_ok!(設置引擎啓動參數(&測試場地));
         })
     }
@@ -92,31 +102,29 @@ mod tests {
     #[test]
     fn 測試配置補丁_全局配置() {
         預備();
-        assert_ok!(配置補丁("default", "menu/page_size", "5"));
+        assert_ok!(配置補丁("test_default", "menu/page_size", "5"));
 
-        let 結果文件 = 測試場地.join("default.custom.yaml");
+        let 結果文件 = 測試場地.join("test_default.custom.yaml");
         let 補丁文件內容 = assert_ok!(read_to_string(&結果文件));
         assert!(補丁文件內容.contains(
             r#"
 patch:
   "menu/page_size": 5"#
         ));
-        assert_ok!(remove_file(&結果文件));
     }
 
     #[test]
     fn 測試配置補丁_輸入方案() {
         預備();
-        assert_ok!(配置補丁("ohmyrime.schema", "menu/page_size", "9"));
+        assert_ok!(配置補丁("test_ohmyrime.schema", "menu/page_size", "9"));
 
-        let 結果文件 = 測試場地.join("ohmyrime.custom.yaml");
+        let 結果文件 = 測試場地.join("test_ohmyrime.custom.yaml");
         let 補丁文件內容 = assert_ok!(read_to_string(&結果文件));
         assert!(補丁文件內容.contains(
             r#"
 patch:
   "menu/page_size": 9"#
         ));
-        assert_ok!(remove_file(&結果文件));
     }
 
     #[test]
@@ -139,7 +147,6 @@ patch:
     - terran
     - zerg"#
         ));
-        assert_ok!(remove_file(&結果文件));
     }
 
     #[test]
@@ -161,6 +168,46 @@ patch:
     terran: scv
     zerg: drone"#
         ));
-        assert_ok!(remove_file(&結果文件));
+    }
+
+    // 按: 測試配置補丁無需任何組件, 且與本項測試訪問的文件不衝突,
+    // 因此各個測試用例可以併發執行.
+    #[test]
+    fn 測試製備輸入法固件() {
+        預備();
+        assert_ok!(write(
+            測試場地.join("default.yaml"),
+            r#"
+schema_list:
+  - schema: ohmyrime
+"#,
+        ));
+        assert_ok!(write(
+            測試場地.join("ohmyrime.schema.yaml"),
+            r#"
+schema:
+  schema_id: ohmyrime
+"#,
+        ));
+
+        assert_ok!(製備輸入法固件());
+
+        assert!(測試場地.join("installation.yaml").exists());
+        assert!(測試場地.join("user.yaml").exists());
+        let 整備區 = 測試場地.join("build");
+        let 默認配置文件 = 整備區.join("default.yaml");
+        let 默認配置內容 = assert_ok!(read_to_string(&默認配置文件));
+        assert!(默認配置內容.contains(
+            r#"
+schema_list:
+  - schema: ohmyrime"#
+        ));
+        let 輸入方案文件 = 整備區.join("ohmyrime.schema.yaml");
+        let 輸入方案內容 = assert_ok!(read_to_string(&輸入方案文件));
+        assert!(輸入方案內容.contains(
+            r#"
+schema:
+  schema_id: ohmyrime"#
+        ));
     }
 }

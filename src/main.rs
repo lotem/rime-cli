@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 mod download;
@@ -10,7 +11,7 @@ use download::下載配方包;
 use install::安裝配方;
 use package::配方包;
 use recipe::配方名片;
-use rime_levers::配置補丁;
+use rime_levers::{製備輸入法固件, 設置引擎啓動參數, 配置補丁};
 
 #[derive(Debug, StructOpt)]
 #[structopt(about = "Rime 配方管理器")]
@@ -55,8 +56,19 @@ fn main() -> anyhow::Result<()> {
                 安裝配方(配方名片::from(rx.as_str()));
             }
         }
-        子命令::Patch { config, key, value } => {
-            配置補丁(&config, &key, &value)?;
+        子命令::Patch {
+            ref config,
+            ref key,
+            ref value,
+        } => {
+            let 還不知道怎麼傳過來 = PathBuf::from(".");
+            設置引擎啓動參數(&還不知道怎麼傳過來)?;
+            配置補丁(config, key, value)?;
+        }
+        子命令::Build => {
+            let 還不知道怎麼傳過來 = PathBuf::from(".");
+            設置引擎啓動參數(&還不知道怎麼傳過來)?;
+            製備輸入法固件()?;
         }
         _ => todo!("還沒做呢"),
     }
