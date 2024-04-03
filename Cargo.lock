@@ -300,7 +300,7 @@ dependencies = [
 [[package]]
 name = "librime-sys"
 version = "0.1.0"
-source = "git+https://github.com/lotem/librime-sys.git#43c9577d6c63096ffabe31f922b5ac914e61cf9c"
+source = "git+https://github.com/lotem/librime-sys.git#0c51d64eadb2e9cfa5b997ef58e79c63fac9c05a"
 dependencies = [
  "bindgen",
 ]

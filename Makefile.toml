@@ -1,0 +1,49 @@
+[env]
+rime_release = "1.11.0"
+rime_artifact = "rime-76a0a16-macOS-universal.tar.bz2"
+rime_artifact_checksum = "1c70a25eedc574e915be75c44fc4386be12d868945e40b3f86afb64dfddea7b7"
+
+[tasks.build.env]
+# for building librime-sys
+LIBRIME_INCLUDE_DIR = "${CARGO_MAKE_WORKING_DIRECTORY}/librime/dist/include"
+LIBRIME_LIB_DIR = "${CARGO_MAKE_WORKING_DIRECTORY}/librime/dist/lib"
+
+[tasks.pre-build]
+condition = { platforms = ["mac", "windows"] }
+dependencies = [
+  "download-rime-artifact",
+  "extract-rime-artifact-posix",
+  "extract-rime-artifact-windows",
+]
+
+[tasks.download-rime-artifact]
+script_runner = "@duckscript"
+script = '''
+download_file = set ${CARGO_MAKE_WORKING_DIRECTORY}/${rime_artifact}
+if not is_path_exists ${download_file}
+  echo downloading ${rime_artifact}...
+  response_size = http_client --output-file ${download_file} https://github.com/rime/librime/releases/download/${rime_release}/${rime_artifact}
+  assert ${response_size}
+  echo downloaded ${response_size} bytes to ${download_file}
+else
+  echo found ${download_file}
+end
+checksum = sha256sum ${download_file}
+echo checksum: ${checksum}
+assert_eq ${checksum} ${rime_artifact_checksum}
+'''
+
+[tasks.extract-rime-artifact-posix]
+condition = { platforms = ["mac"], files_not_exist = ["${CARGO_MAKE_WORKING_DIRECTORY}/librime"] }
+dependencies = ["download-rime-artifact"]
+script = '''
+mkdir "${CARGO_MAKE_WORKING_DIRECTORY}/librime"
+tar -xjvf "${CARGO_MAKE_WORKING_DIRECTORY}/${rime_artifact}" -C "${CARGO_MAKE_WORKING_DIRECTORY}/librime"
+'''
+
+
+[tasks.extract-rime-artifact-windows]
+condition = { platforms = ["windows"], files_not_exist = ["${CARGO_MAKE_WORKING_DIRECTORY}/librime"] }
+dependencies = ["download-rime-artifact"]
+command = "7z"
+args = ["x", "${CARGO_MAKE_WORKING_DIRECTORY}/${rime_artifact}", "-o${CARGO_MAKE_WORKING_DIRECTORY}/librime"]
