@@ -11,7 +11,9 @@ use download::下載配方包;
 use install::安裝配方;
 use package::配方包;
 use recipe::配方名片;
-use rime_levers::{製備輸入法固件, 設置引擎啓動參數, 配置補丁};
+use rime_levers::{
+    加入輸入方案列表, 製備輸入法固件, 設置引擎啓動參數, 配置補丁
+};
 
 #[derive(Debug, StructOpt)]
 #[structopt(about = "Rime 配方管理器")]
@@ -29,15 +31,17 @@ enum 子命令 {
         /// 值
         value: String,
     },
+    /// 加入輸入方案列表
+    Add { schemata: Vec<String> },
+    /// 構建輸入法固件
+    Build,
+    /// 部署輸入法固件到目標位置
+    Deploy,
     /// 新建配方
     NewRecipe {
         /// 配方名字
         name: Option<String>,
     },
-    /// 構建輸入法固件
-    Build,
-    /// 部署輸入法固件到目標位置
-    Deploy,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -64,6 +68,11 @@ fn main() -> anyhow::Result<()> {
             let 還不知道怎麼傳過來 = PathBuf::from(".");
             設置引擎啓動參數(&還不知道怎麼傳過來)?;
             配置補丁(config, key, value)?;
+        }
+        子命令::Add { ref schemata } => {
+            let 還不知道怎麼傳過來 = PathBuf::from(".");
+            設置引擎啓動參數(&還不知道怎麼傳過來)?;
+            加入輸入方案列表(schemata)?;
         }
         子命令::Build => {
             let 還不知道怎麼傳過來 = PathBuf::from(".");
