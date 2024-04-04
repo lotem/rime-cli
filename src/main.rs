@@ -18,10 +18,30 @@ use rime_levers::{
 #[derive(Debug, StructOpt)]
 #[structopt(about = "Rime 配方管理器")]
 enum 子命令 {
+    /// 加入輸入方案列表
+    Add {
+        /// 要向列表中追加的輸入方案
+        schemata: Vec<String>,
+    },
+    /// 構建輸入法固件
+    Build,
+    /// 部署輸入法固件到目標位置
+    Deploy,
     /// 下載配方包
-    Download { recipes: Vec<String> },
+    Download {
+        /// 要下載的配方包
+        recipes: Vec<String>,
+    },
     /// 安裝配方
-    Install { recipes: Vec<String> },
+    Install {
+        /// 要安裝的配方
+        recipes: Vec<String>,
+    },
+    /// 新建配方
+    New {
+        /// 配方名字
+        name: Option<String>,
+    },
     /// 配置補丁
     Patch {
         /// 目標配置
@@ -31,16 +51,10 @@ enum 子命令 {
         /// 值
         value: String,
     },
-    /// 加入輸入方案列表
-    Add { schemata: Vec<String> },
-    /// 構建輸入法固件
-    Build,
-    /// 部署輸入法固件到目標位置
-    Deploy,
-    /// 新建配方
-    NewRecipe {
-        /// 配方名字
-        name: Option<String>,
+    /// 選擇輸入方案
+    Select {
+        /// 選中的輸入方案
+        schema: String,
     },
 }
 
