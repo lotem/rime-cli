@@ -1,10 +1,9 @@
 [env]
+# download librime artifacts
 rime_release = "1.11.0"
 rime_artifact = "rime-76a0a16-macOS-universal.tar.bz2"
 rime_artifact_checksum = "1c70a25eedc574e915be75c44fc4386be12d868945e40b3f86afb64dfddea7b7"
-
-[tasks.build.env]
-# for building librime-sys
+# build librime-sys
 LIBRIME_INCLUDE_DIR = "${CARGO_MAKE_WORKING_DIRECTORY}/librime/dist/include"
 LIBRIME_LIB_DIR = "${CARGO_MAKE_WORKING_DIRECTORY}/librime/dist/lib"
 
@@ -40,7 +39,6 @@ script = '''
 mkdir "${CARGO_MAKE_WORKING_DIRECTORY}/librime"
 tar -xjvf "${CARGO_MAKE_WORKING_DIRECTORY}/${rime_artifact}" -C "${CARGO_MAKE_WORKING_DIRECTORY}/librime"
 '''
-
 
 [tasks.extract-rime-artifact-windows]
 condition = { platforms = ["windows"], files_not_exist = ["${CARGO_MAKE_WORKING_DIRECTORY}/librime"] }
