@@ -84,27 +84,33 @@ mod tests {
     use claims::assert_ok;
     use lazy_static::lazy_static;
     use std::fs::{read_to_string, write};
-    use std::sync::Once;
+    use std::sync::{Once, RwLock};
 
     lazy_static! {
-        static ref 測試場地: PathBuf = std::env::temp_dir().join("rime_levers_tests");
+        static ref 公共測試場地: PathBuf = std::env::temp_dir().join("rime_levers_tests");
     }
-
-    static 預備本場測試: Once = Once::new();
+    // 公共測試場地只需在各項測試開始之前清理一次.
+    static 預備公共測試場地: Once = Once::new();
+    // rime::Deployer 是個單例, 同一時刻只能服務一片場地.
+    // 公共場地中的測試可以並發執行, 持讀鎖. 專用場地的測試持寫鎖.
+    static 佔用引擎機位: RwLock<()> = RwLock::new(());
 
     fn 預備() {
-        預備本場測試.call_once(|| {
-            assert_ok!(std::fs::remove_dir_all(&*測試場地));
-            assert_ok!(設置引擎啓動參數(&測試場地));
-        })
+        預備公共測試場地.call_once(|| {
+            if 公共測試場地.exists() {
+                assert_ok!(std::fs::remove_dir_all(&*公共測試場地));
+            }
+        });
+        assert_ok!(設置引擎啓動參數(&公共測試場地));
     }
 
     #[test]
     fn 測試配置補丁_全局配置() {
+        let _佔 = 佔用引擎機位.read().unwrap();
         預備();
-        assert_ok!(配置補丁("test_default", "menu/page_size", "5"));
+        assert_ok!(配置補丁("default", "menu/page_size", "5"));
 
-        let 結果文件 = 測試場地.join("test_default.custom.yaml");
+        let 結果文件 = 公共測試場地.join("default.custom.yaml");
         let 補丁文件內容 = assert_ok!(read_to_string(&結果文件));
         assert!(補丁文件內容.contains(
             r#"
@@ -115,10 +121,11 @@ patch:
 
     #[test]
     fn 測試配置補丁_輸入方案() {
+        let _佔 = 佔用引擎機位.read().unwrap();
         預備();
-        assert_ok!(配置補丁("test_ohmyrime.schema", "menu/page_size", "9"));
+        assert_ok!(配置補丁("ohmyrime.schema", "menu/page_size", "9"));
 
-        let 結果文件 = 測試場地.join("test_ohmyrime.custom.yaml");
+        let 結果文件 = 公共測試場地.join("ohmyrime.custom.yaml");
         let 補丁文件內容 = assert_ok!(read_to_string(&結果文件));
         assert!(補丁文件內容.contains(
             r#"
@@ -129,14 +136,15 @@ patch:
 
     #[test]
     fn 測試配置補丁_列表值() {
+        let _佔 = 佔用引擎機位.read().unwrap();
         預備();
         assert_ok!(配置補丁(
-            "test_patch_list",
+            "patch_list",
             "starcraft/races",
             r#"[protoss, terran, zerg]"#
         ));
 
-        let 結果文件 = 測試場地.join("test_patch_list.custom.yaml");
+        let 結果文件 = 公共測試場地.join("patch_list.custom.yaml");
         let 補丁文件內容 = assert_ok!(read_to_string(&結果文件));
         println!("補丁文件內容: {}", 補丁文件內容);
         assert!(補丁文件內容.contains(
@@ -151,14 +159,15 @@ patch:
 
     #[test]
     fn 測試配置補丁_字典值() {
+        let _佔 = 佔用引擎機位.read().unwrap();
         預備();
         assert_ok!(配置補丁(
-            "test_patch_map",
+            "patch_map",
             "starcraft/workers",
             r#"{protoss: probe, terran: scv, zerg: drone}"#
         ));
 
-        let 結果文件 = 測試場地.join("test_patch_map.custom.yaml");
+        let 結果文件 = 公共測試場地.join("patch_map.custom.yaml");
         let 補丁文件內容 = assert_ok!(read_to_string(&結果文件));
         assert!(補丁文件內容.contains(
             r#"
@@ -170,20 +179,23 @@ patch:
         ));
     }
 
-    // 按: 測試配置補丁無需任何組件, 且與本項測試訪問的文件不衝突,
-    // 因此各個測試用例可以併發執行.
     #[test]
     fn 測試製備輸入法固件() {
-        預備();
+        let _佔 = 佔用引擎機位.write().unwrap();
+        let 專用測試場地 = std::env::temp_dir().join("rime_levers_tests_build");
+        if 專用測試場地.exists() {
+            assert_ok!(std::fs::remove_dir_all(&專用測試場地));
+        }
+        assert_ok!(設置引擎啓動參數(&專用測試場地));
         assert_ok!(write(
-            測試場地.join("default.yaml"),
+            專用測試場地.join("default.yaml"),
             r#"
 schema_list:
   - schema: ohmyrime
 "#,
         ));
         assert_ok!(write(
-            測試場地.join("ohmyrime.schema.yaml"),
+            專用測試場地.join("ohmyrime.schema.yaml"),
             r#"
 schema:
   schema_id: ohmyrime
@@ -192,9 +204,9 @@ schema:
 
         assert_ok!(製備輸入法固件());
 
-        assert!(測試場地.join("installation.yaml").exists());
-        assert!(測試場地.join("user.yaml").exists());
-        let 整備區 = 測試場地.join("build");
+        assert!(專用測試場地.join("installation.yaml").exists());
+        assert!(專用測試場地.join("user.yaml").exists());
+        let 整備區 = 專用測試場地.join("build");
         let 默認配置文件 = 整備區.join("default.yaml");
         let 默認配置內容 = assert_ok!(read_to_string(&默認配置文件));
         assert!(默認配置內容.contains(
