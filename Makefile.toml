@@ -1,19 +1,27 @@
 [env]
-# download librime artifacts
-rime_release = "1.11.0"
-rime_artifact = "rime-76a0a16-macOS-universal.tar.bz2"
-rime_artifact_checksum = "1c70a25eedc574e915be75c44fc4386be12d868945e40b3f86afb64dfddea7b7"
-# build librime-sys
+# for building librime-sys
 LIBRIME_INCLUDE_DIR = "${CARGO_MAKE_WORKING_DIRECTORY}/librime/dist/include"
 LIBRIME_LIB_DIR = "${CARGO_MAKE_WORKING_DIRECTORY}/librime/dist/lib"
 
 [tasks.pre-build]
-condition = { platforms = ["mac", "windows"] }
-dependencies = [
-  "download-rime-artifact",
-  "extract-rime-artifact-posix",
-  "extract-rime-artifact-windows",
-]
+condition = { platforms = ["mac", "windows"], files_not_exist = ["${CARGO_MAKE_WORKING_DIRECTORY}/librime/version-info.txt"] }
+run_task = { name = "fetch-rime-artifact" }
+
+[tasks.fetch-rime-artifact]
+mac_alias = "fetch-rime-artifact-mac"
+windows_alias = "fetch-rime-artifact-windows"
+
+[tasks.fetch-rime-artifact-mac]
+env.rime_release = "1.11.0"
+env.rime_artifact = "rime-76a0a16-macOS-universal.tar.bz2"
+env.rime_artifact_checksum = "1c70a25eedc574e915be75c44fc4386be12d868945e40b3f86afb64dfddea7b7"
+run_task = { name = ["download-rime-artifact", "extract-rime-artifact-posix"] }
+
+[tasks.fetch-rime-artifact-windows]
+env.rime_release = "1.11.0"
+env.rime_artifact = "rime-76a0a16-Windows-msvc-x64.7z"
+env.rime_artifact_checksum = "32908951837501da8957d350765c9c3786c3998fa17fbdfc02b7c3e7aaaf5780"
+run_task = { name = ["download-rime-artifact", "extract-rime-artifact-windows"] }
 
 [tasks.download-rime-artifact]
 script_runner = "@duckscript"
@@ -33,15 +41,11 @@ assert_eq ${checksum} ${rime_artifact_checksum}
 '''
 
 [tasks.extract-rime-artifact-posix]
-condition = { platforms = ["mac"], files_not_exist = ["${CARGO_MAKE_WORKING_DIRECTORY}/librime"] }
-dependencies = ["download-rime-artifact"]
 script = '''
-mkdir "${CARGO_MAKE_WORKING_DIRECTORY}/librime"
+mkdir -p "${CARGO_MAKE_WORKING_DIRECTORY}/librime"
 tar -xjvf "${CARGO_MAKE_WORKING_DIRECTORY}/${rime_artifact}" -C "${CARGO_MAKE_WORKING_DIRECTORY}/librime"
 '''
 
 [tasks.extract-rime-artifact-windows]
-condition = { platforms = ["windows"], files_not_exist = ["${CARGO_MAKE_WORKING_DIRECTORY}/librime"] }
-dependencies = ["download-rime-artifact"]
 command = "7z"
-args = ["x", "${CARGO_MAKE_WORKING_DIRECTORY}/${rime_artifact}", "-o${CARGO_MAKE_WORKING_DIRECTORY}/librime"]
+args = ["x", "-y", "-o${CARGO_MAKE_WORKING_DIRECTORY}/librime", "${CARGO_MAKE_WORKING_DIRECTORY}/${rime_artifact}"]
