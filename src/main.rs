@@ -40,7 +40,7 @@ enum 子命令 {
     /// 新建配方
     New {
         /// 配方名字
-        name: Option<String>,
+        _name: Option<String>,
     },
     /// 配置補丁
     Patch {
@@ -54,7 +54,7 @@ enum 子命令 {
     /// 選擇輸入方案
     Select {
         /// 選中的輸入方案
-        schema: String,
+        _schema: String,
     },
 }
 
