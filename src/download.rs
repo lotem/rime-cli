@@ -1,6 +1,6 @@
-use crate::package::代碼庫地址;
+use crate::package::配方包;
 
-pub fn 下載配方包(倉庫: 代碼庫地址) {
-    log::debug!("下載配方包: {倉庫}");
+pub fn 下載配方包(包: 配方包) {
+    log::debug!("下載配方包: {}, 位於 {}", 包.配方, 包.倉庫);
     todo!("還沒做呢")
 }

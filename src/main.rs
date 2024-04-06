@@ -76,7 +76,7 @@ fn main() -> anyhow::Result<()> {
         }
         子命令::Download { recipes } => {
             for rx in recipes {
-                下載配方包(配方包::from(rx.as_str()).倉庫);
+                下載配方包(配方包::from(rx.as_str()));
             }
         }
         子命令::Install { recipes } => {
