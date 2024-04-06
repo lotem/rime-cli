@@ -117,6 +117,27 @@ pub fn 加入輸入方案列表(衆輸入方案: &[String]) -> anyhow::Result<()
     Ok(())
 }
 
+pub fn 選擇輸入方案(方案: &str) -> anyhow::Result<()> {
+    log::debug!("選擇輸入方案: {方案}");
+    rime_api_call!(deployer_initialize, std::ptr::null_mut());
+
+    let mut 用戶配置: RimeConfig = rime_struct_new!();
+    let 用戶配置〇 = CString::new("user")?;
+    rime_api_call!(user_config_open, 用戶配置〇.as_ptr(), &mut 用戶配置);
+    let 用家之選〇 = CString::new("var/previously_selected_schema")?;
+    let 方案〇 = CString::new(方案.to_owned())?;
+    rime_api_call!(
+        config_set_string,
+        &mut 用戶配置,
+        用家之選〇.as_ptr(),
+        方案〇.as_ptr()
+    );
+    rime_api_call!(config_close, &mut 用戶配置);
+
+    rime_api_call!(finalize);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -294,6 +315,36 @@ schema:
     - {schema: protoss}
     - {schema: terran}
     - {schema: zerg}"#
+        ));
+    }
+
+    #[test]
+    fn 測試選擇輸入方案() {
+        let _佔 = 佔用引擎機位.write().unwrap();
+        let 專用測試場地 = std::env::temp_dir().join("rime_levers_tests_select");
+        if 專用測試場地.exists() {
+            assert_ok!(std::fs::remove_dir_all(&專用測試場地));
+        }
+        assert_ok!(設置引擎啓動參數(&專用測試場地));
+
+        let grrrr_之選 = "protoss";
+        assert_ok!(選擇輸入方案(&grrrr_之選));
+
+        let 用戶配置 = 專用測試場地.join("user.yaml");
+        assert!(用戶配置.exists());
+        let 用戶配置內容 = assert_ok!(read_to_string(&用戶配置));
+        assert!(用戶配置內容.contains(
+            r#"var:
+  previously_selected_schema: protoss"#
+        ));
+
+        let boxer_之選 = "terran";
+        assert_ok!(選擇輸入方案(&boxer_之選));
+
+        let 用戶配置內容 = assert_ok!(read_to_string(&用戶配置));
+        assert!(用戶配置內容.contains(
+            r#"var:
+  previously_selected_schema: terran"#
         ));
     }
 }
