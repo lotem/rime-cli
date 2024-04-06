@@ -64,36 +64,32 @@ fn main() -> anyhow::Result<()> {
     let 命令行參數 = 子命令::from_args();
     log::debug!("參數: {:?}", 命令行參數);
     match 命令行參數 {
-        子命令::Add { ref schemata } => {
+        子命令::Add { schemata } => {
             let 還不知道怎麼傳過來 = PathBuf::from(".");
             設置引擎啓動參數(&還不知道怎麼傳過來)?;
-            加入輸入方案列表(schemata)?;
+            加入輸入方案列表(&schemata)?;
         }
         子命令::Build => {
             let 還不知道怎麼傳過來 = PathBuf::from(".");
             設置引擎啓動參數(&還不知道怎麼傳過來)?;
             製備輸入法固件()?;
         }
-        子命令::Download { ref recipes } => {
+        子命令::Download { recipes } => {
             for rx in recipes {
                 下載配方包(配方包::from(rx.as_str()).倉庫);
             }
         }
-        子命令::Install { ref recipes } => {
+        子命令::Install { recipes } => {
             for rx in recipes {
                 安裝配方(配方名片::from(rx.as_str()));
             }
         }
-        子命令::Patch {
-            ref config,
-            ref key,
-            ref value,
-        } => {
+        子命令::Patch { config, key, value } => {
             let 還不知道怎麼傳過來 = PathBuf::from(".");
             設置引擎啓動參數(&還不知道怎麼傳過來)?;
-            配置補丁(config, key, value)?;
+            配置補丁(&config, &key, &value)?;
         }
-        子命令::Select { ref schema } => {
+        子命令::Select { schema } => {
             選擇輸入方案(&schema)?;
         }
         _ => todo!("還沒做呢"),
