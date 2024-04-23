@@ -13,3 +13,13 @@ fn 搬運倉庫(包: &配方包, 本地路徑: &PathBuf) -> anyhow::Result<()> {
     let 倉庫 = Repository::clone(網址, 本地路徑)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a() {
+
+    }
+}
