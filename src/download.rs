@@ -1,33 +1,32 @@
 use crate::package::配方包;
 
-use std::path::{Path, PathBuf};
+use anyhow::anyhow;
+use std::path::Path;
 
-pub fn 下載配方包(包: &配方包) -> anyhow::Result<()> {
-    log::debug!("下載配方包: {}, 位於 {}", 包.配方, 包.倉庫);
-    let 本地倉庫路徑: PathBuf = ["pkg", 包.配方.方家.as_str(), 包.配方.名字.as_str()]
-        .iter()
-        .collect();
-    if 本地倉庫路徑.exists() {
-        同步既存倉庫(包, &本地倉庫路徑)
-    } else {
-        搬運倉庫(包, &本地倉庫路徑)
+pub fn 下載配方包(衆配方包: Vec<配方包>) -> anyhow::Result<()> {
+    for (包名, 一組配方包) in 配方包::按倉庫分組(衆配方包) {
+        let 包 = 一組配方包.first().ok_or(anyhow!("至少應有一個配方包"))?;
+        log::debug!("下載配方包: {}, 位於 {}", 包名, 包.倉庫.網址);
+        let 本地倉庫 = 包.本地路徑();
+        if 本地倉庫.exists() {
+            同步既存倉庫(包, &本地倉庫)?;
+        } else {
+            搬運倉庫(包, &本地倉庫)?;
+        }
     }
+    Ok(())
 }
 
 fn 搬運倉庫(包: &配方包, 本地路徑: &Path) -> anyhow::Result<()> {
     let 網址 = &包.倉庫.網址;
-    let _倉庫 = git::clone(網址, 本地路徑)?;
+    let 分支 = 包.倉庫.分支.as_deref();
+    git::clone(網址, 分支, 本地路徑)?;
     Ok(())
 }
 
 fn 同步既存倉庫(包: &配方包, 本地路徑: &Path) -> anyhow::Result<()> {
     const 遠端代號: &str = "origin";
-    let 遠端分支 = 包
-        .倉庫
-        .分支
-        .as_ref()
-        .map(String::as_str)
-        .unwrap_or("master");
+    let 遠端分支 = 包.倉庫.分支.as_deref().unwrap_or("master");
     git::pull(本地路徑, 遠端代號, 遠端分支)?;
     Ok(())
 }
@@ -94,7 +93,7 @@ mod git {
         io::stdout().flush().unwrap();
     }
 
-    pub fn clone(url: &str, path: &Path) -> Result<(), git2::Error> {
+    pub fn clone(url: &str, branch: Option<&str>, path: &Path) -> Result<(), git2::Error> {
         let state = RefCell::new(State {
             progress: None,
             total: 0,
@@ -106,7 +105,7 @@ mod git {
         cb.transfer_progress(|stats| {
             let mut state = state.borrow_mut();
             state.progress = Some(stats.to_owned());
-            print(&mut *state);
+            print(&mut state);
             true
         });
 
@@ -116,15 +115,17 @@ mod git {
             state.path = path.map(|p| p.to_path_buf());
             state.current = cur;
             state.total = total;
-            print(&mut *state);
+            print(&mut state);
         });
 
         let mut fo = FetchOptions::new();
         fo.remote_callbacks(cb);
-        RepoBuilder::new()
-            .fetch_options(fo)
-            .with_checkout(co)
-            .clone(url, path)?;
+        let mut repo = RepoBuilder::new();
+        repo.fetch_options(fo).with_checkout(co);
+        if let Some(branch) = branch {
+            repo.branch(branch);
+        }
+        repo.clone(url, path)?;
         println!();
 
         Ok(())
@@ -188,7 +189,7 @@ mod git {
         }
 
         let fetch_head = repo.find_reference("FETCH_HEAD")?;
-        Ok(repo.reference_to_annotated_commit(&fetch_head)?)
+        repo.reference_to_annotated_commit(&fetch_head)
     }
 
     fn fast_forward(
@@ -253,6 +254,7 @@ mod git {
         } else if analysis.0.is_normal() {
             // will not do a normal merge
             let head_commit = repo.reference_to_annotated_commit(&repo.head()?)?;
+            // TODO: print the message and then checkout deteched head.
             return Err(git2::Error::new(
                 ErrorCode::NotFastForward,
                 ErrorClass::Repository,
@@ -276,7 +278,16 @@ mod git {
         let repo = Repository::open(repo_path)?;
         let mut remote = repo.find_remote(remote_name)?;
         let fetch_commit = do_fetch(&repo, &[remote_branch], &mut remote)?;
-        do_merge(&repo, &remote_branch, fetch_commit)
+        // TODO: modify do_merge to handle these cases:
+        // 1. when the local branch does not exist;
+        // 2. when the remote isn't a branch.
+        let reference = repo.resolve_reference_from_short_name(remote_name)?;
+        if reference.is_branch() {
+            do_merge(&repo, remote_branch, fetch_commit)
+        } else {
+            repo.set_head_detached_from_annotated(fetch_commit)
+            // then checkout head...
+        }
     }
 }
 

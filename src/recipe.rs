@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct 配方名片 {
     pub 方家: String,
     pub 名字: String,

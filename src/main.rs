@@ -75,10 +75,12 @@ fn main() -> anyhow::Result<()> {
             製備輸入法固件()?;
         }
         子命令::Download { recipes } => {
-            for rx in recipes {
-                // TODO: 錯誤處理
-                下載配方包(&配方包::from(rx.as_str()))?;
-            }
+            下載配方包(
+                recipes
+                    .iter()
+                    .map(|rx| 配方包::from(rx.as_str()))
+                    .collect::<Vec<_>>(),
+            )?;
         }
         子命令::Install { recipes } => {
             for rx in recipes {
