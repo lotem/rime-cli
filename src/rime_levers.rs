@@ -98,10 +98,8 @@ pub fn 加入輸入方案列表(衆輸入方案: &[String]) -> anyhow::Result<()
             既有方案.push(unsafe { CStr::from_ptr(方案) }.to_str()?.to_owned());
         }
     }
-    let 新增方案 = 衆輸入方案
-        .into_iter()
-        .filter(|方案| !既有方案.contains(方案));
-    let 新增列表項〇 = CString::new(format!("patch/schema_list/@next/schema"))?;
+    let 新增方案 = 衆輸入方案.iter().filter(|方案| !既有方案.contains(方案));
+    let 新增列表項〇 = CString::new("patch/schema_list/@next/schema")?;
     for 方案 in 新增方案 {
         let 方案〇 = CString::new(方案.to_owned())?;
         rime_api_call!(
@@ -328,7 +326,7 @@ schema:
         assert_ok!(設置引擎啓動參數(&專用測試場地));
 
         let grrrr_之選 = "protoss";
-        assert_ok!(選擇輸入方案(&grrrr_之選));
+        assert_ok!(選擇輸入方案(grrrr_之選));
 
         let 用戶配置 = 專用測試場地.join("user.yaml");
         assert!(用戶配置.exists());
@@ -339,7 +337,7 @@ schema:
         ));
 
         let boxer_之選 = "terran";
-        assert_ok!(選擇輸入方案(&boxer_之選));
+        assert_ok!(選擇輸入方案(boxer_之選));
 
         let 用戶配置內容 = assert_ok!(read_to_string(&用戶配置));
         assert!(用戶配置內容.contains(
