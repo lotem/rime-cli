@@ -8,12 +8,12 @@ name = "rime"
 path = "src/main.rs"
 
 [dependencies]
-anyhow = "1.0.81"
-env_logger = "0.11.3"
+anyhow = "1.0.96"
+env_logger = "0.11.6"
 rime = { package = "librime-sys", git = "https://github.com/lotem/librime-sys.git" }
-log = "0.4.21"
+log = "0.4.26"
 structopt = "0.3.26"
-claims = "0.7.1"
-lazy_static = "1.4.0"
+claims = "0.8.0"
+lazy_static = "1.5.0"
 git2 = "0.20.0"
-tempfile = "3.15.0"
+tempfile = "3.17.1"
