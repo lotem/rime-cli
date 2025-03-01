@@ -1,10 +1,11 @@
 use crate::package::配方包;
+use crate::recipe::配方名片;
 
 use anyhow::anyhow;
 use std::path::Path;
 
-pub fn 下載配方包(衆配方包: Vec<配方包>) -> anyhow::Result<()> {
-    for (包名, 一組配方包) in 配方包::按倉庫分組(衆配方包) {
+pub fn 下載配方包(衆配方: &[配方名片]) -> anyhow::Result<()> {
+    for (包名, 一組配方包) in 配方包::按倉庫分組(衆配方) {
         let 包 = 一組配方包.first().ok_or(anyhow!("至少應有一個配方包"))?;
         log::debug!("下載配方包: {}, 位於 {}", 包名, 包.倉庫.網址);
         let 本地倉庫 = 包.本地路徑();

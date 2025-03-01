@@ -33,14 +33,17 @@ impl 配方包 {
             .collect()
     }
 
-    pub fn 按倉庫分組(衆配方包: Vec<配方包>) -> HashMap<配方名片, Vec<配方包>> {
+    pub fn 按倉庫分組(衆配方: &[配方名片]) -> HashMap<配方名片, Vec<配方包>> {
         let mut 按倉庫分組 = HashMap::new();
-        衆配方包.into_iter().for_each(|包| {
+        衆配方.iter().for_each(|配方| {
             let 包名 = 配方名片 {
                 版本: None,
-                ..包.配方.clone()
+                ..配方.clone()
             };
-            按倉庫分組.entry(包名).or_insert_with(Vec::new).push(包);
+            按倉庫分組
+                .entry(包名)
+                .or_insert_with(Vec::new)
+                .push(配方包::from(配方.clone()));
         });
         按倉庫分組
     }

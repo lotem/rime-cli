@@ -9,7 +9,6 @@ mod rime_levers;
 
 use download::下載配方包;
 use install::安裝配方;
-use package::配方包;
 use recipe::配方名片;
 use rime_levers::{
     加入輸入方案列表, 製備輸入法固件, 設置引擎啓動參數, 選擇輸入方案, 配置補丁
@@ -75,16 +74,20 @@ fn main() -> anyhow::Result<()> {
             製備輸入法固件()?;
         }
         子命令::Download { recipes } => {
-            下載配方包(
-                recipes
-                    .iter()
-                    .map(|rx| 配方包::from(rx.as_str()))
-                    .collect::<Vec<_>>(),
-            )?;
+            let 衆配方 = recipes
+                .iter()
+                .map(|rx| 配方名片::from(rx.as_str()))
+                .collect::<Vec<_>>();
+            下載配方包(&衆配方)?;
         }
         子命令::Install { recipes } => {
-            for rx in recipes {
-                安裝配方(配方名片::from(rx.as_str()));
+            let 衆配方 = recipes
+                .iter()
+                .map(|rx| 配方名片::from(rx.as_str()))
+                .collect::<Vec<_>>();
+            下載配方包(&衆配方)?;
+            for 配方 in &衆配方 {
+                安裝配方(配方)?;
             }
         }
         子命令::Patch { config, key, value } => {
