@@ -724,6 +724,7 @@ dependencies = [
  "lazy_static",
  "librime-sys",
  "log",
+ "regex",
  "structopt",
  "tempfile",
 ]
