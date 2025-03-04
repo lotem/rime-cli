@@ -63,8 +63,9 @@ impl From<配方名片> for 配方包 {
 }
 
 fn 配方倉庫地址(配方: &配方名片) -> 代碼庫地址 {
+    let 域名 = std::env::var("repo_host").unwrap_or("github.com".to_string());
     代碼庫地址 {
-        網址: format!("https://github.com/{}/{}.git", 配方.方家, 配方.名字),
+        網址: format!("https://{}/{}/{}.git", 域名, 配方.方家, 配方.名字),
         分支: 配方.版本.clone(),
     }
 }

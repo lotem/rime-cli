@@ -22,6 +22,8 @@ struct 命令行參數 {
     // 代理 URL 作爲選項
     #[structopt(short,long = "proxy", global = true, help = "代理服務器地址")]
     proxy: Option<String>,
+    #[structopt(short,long = "host", global = true, help = "倉庫域名")]
+    host: Option<String>,
     // 子命令
     #[structopt(subcommand)]
     子命令: 子命令,
@@ -82,6 +84,16 @@ fn main() -> anyhow::Result<()> {
             log::debug!("設置代理 {}", 代理地址);
         } else {
             eprintln!("無效的代理地址: {} ", 代理地址);
+            std::process::exit(1);
+        }
+    }
+
+    if let Some(倉庫域名) = 命令行參數.host {
+        let 域名規則 = Regex::new(r"^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$").unwrap();
+        if 域名規則.is_match(&倉庫域名) {
+            std::env::set_var("repo_host", 倉庫域名);
+        } else {
+            eprintln!("無效的倉庫域名: {} ", 倉庫域名);
             std::process::exit(1);
         }
     }
