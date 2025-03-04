@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
-use regex::Regex;
 
 mod download;
 mod install;
@@ -71,32 +70,26 @@ enum 子命令 {
     },
 }
 
+fn 設置全局參數(host: &String, proxy: &String) {
+    if !host.is_empty() {
+        std::env::set_var("repo_host", host);
+        log::debug!("設置倉庫域名 {}", host);
+    }
+    if !proxy.is_empty() {
+        std::env::set_var("http_proxy", proxy);
+        std::env::set_var("https_proxy", proxy);
+        log::debug!("設置代理 {}", proxy);
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     let 命令行參數 = 命令行參數::from_args();
     log::debug!("參數: {:?}", 命令行參數);
-    if let Some(代理地址) = 命令行參數.proxy {
-        let 代理規則 = Regex::new(r"^(http://|https://)?[a-zA-Z0-9.-]+(:\d+)?$").unwrap();
-        if 代理規則.is_match(&代理地址) {
-            std::env::set_var("http_proxy", 代理地址.as_str());
-            std::env::set_var("https_proxy", 代理地址.as_str());
-            log::debug!("設置代理 {}", 代理地址);
-        } else {
-            eprintln!("無效的代理地址: {} ", 代理地址);
-            std::process::exit(1);
-        }
-    }
 
-    if let Some(倉庫域名) = 命令行參數.host {
-        let 域名規則 = Regex::new(r"^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$").unwrap();
-        if 域名規則.is_match(&倉庫域名) {
-            std::env::set_var("repo_host", 倉庫域名);
-        } else {
-            eprintln!("無效的倉庫域名: {} ", 倉庫域名);
-            std::process::exit(1);
-        }
-    }
+    let 代理地址 = 命令行參數.proxy.unwrap_or("".to_string());
+    let 倉庫域名 = 命令行參數.host.unwrap_or("".to_string());
     match 命令行參數.子命令 {
         子命令::Add { schemata } => {
             let 還不知道怎麼傳過來 = PathBuf::from(".");
@@ -109,6 +102,7 @@ fn main() -> anyhow::Result<()> {
             製備輸入法固件()?;
         }
         子命令::Download { recipes } => {
+            設置全局參數(&倉庫域名, &代理地址);
             下載配方包(
                 recipes
                     .iter()
@@ -117,6 +111,7 @@ fn main() -> anyhow::Result<()> {
             )?;
         }
         子命令::Install { recipes } => {
+            設置全局參數(&倉庫域名, &代理地址);
             for rx in recipes {
                 安裝配方(配方名片::from(rx.as_str()));
             }
