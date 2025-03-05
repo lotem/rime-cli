@@ -40,72 +40,86 @@ mod git {
     use std::cell::RefCell;
     use std::io::{self, Write};
     use std::path::{Path, PathBuf};
+    use indicatif::{ProgressBar, ProgressStyle};
+
+    fn update_progress_bar(state: &mut State) {
+        if let Some(progress) = &state.progress {
+            state.pb.set_length(progress.total_objects() as u64);
+            state.pb.set_position(progress.received_objects() as u64);
+        } else {
+            state.pb.set_length(state.total as u64);
+            state.pb.set_position(state.current as u64);
+        }
+        let message = if let Some(stats) = &state.progress {
+            let network_pct = (100 * stats.received_objects()) / stats.total_objects();
+            let index_pct = (100 * stats.indexed_objects()) / stats.total_objects();
+            let co_pct = if state.total > 0 {
+                (100 * state.current) / state.total
+            } else {
+                0
+            };
+            let kbytes = stats.received_bytes() / 1024;
+            if stats.received_objects() == stats.total_objects() {
+                format!(
+                    "Resolving deltas {}/{}",
+                    stats.indexed_deltas(),
+                    stats.total_deltas()
+                )
+            } else {
+                format!(
+                    "net {}% ({} kb, {}/{}) / idx {}% ({}/{}) / chk {}% ({}/{}) {}",
+                    network_pct,
+                    kbytes,
+                    stats.received_objects(),
+                    stats.total_objects(),
+                    index_pct,
+                    stats.indexed_objects(),
+                    stats.total_objects(),
+                    co_pct,
+                    state.current,
+                    state.total,
+                    state
+                    .path
+                    .as_ref()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_default()
+                )
+            }
+        } else {
+            String::new()
+        };
+        state.pb.set_message(message);
+    }
 
     struct State {
         progress: Option<Progress<'static>>,
         total: usize,
         current: usize,
         path: Option<PathBuf>,
-        newline: bool,
-    }
-
-    fn print(state: &mut State) {
-        let stats = state.progress.as_ref().unwrap();
-        let network_pct = (100 * stats.received_objects()) / stats.total_objects();
-        let index_pct = (100 * stats.indexed_objects()) / stats.total_objects();
-        let co_pct = if state.total > 0 {
-            (100 * state.current) / state.total
-        } else {
-            0
-        };
-        let kbytes = stats.received_bytes() / 1024;
-        if stats.received_objects() == stats.total_objects() {
-            if !state.newline {
-                println!();
-                state.newline = true;
-            }
-            print!(
-                "Resolving deltas {}/{}\r",
-                stats.indexed_deltas(),
-                stats.total_deltas()
-            );
-        } else {
-            print!(
-                "net {:3}% ({:4} kb, {:5}/{:5})  /  idx {:3}% ({:5}/{:5})  \
-             /  chk {:3}% ({:4}/{:4}) {}\r",
-                network_pct,
-                kbytes,
-                stats.received_objects(),
-                stats.total_objects(),
-                index_pct,
-                stats.indexed_objects(),
-                stats.total_objects(),
-                co_pct,
-                state.current,
-                state.total,
-                state
-                    .path
-                    .as_ref()
-                    .map(|s| s.to_string_lossy().into_owned())
-                    .unwrap_or_default()
-            )
-        }
-        io::stdout().flush().unwrap();
+        pb: ProgressBar,
     }
 
     pub fn clone(url: &str, branch: Option<&str>, path: &Path) -> Result<(), git2::Error> {
+        let pb = ProgressBar::new(0);
+        pb.set_style(
+            ProgressStyle::default_bar()
+            .template("{spinner:.green} [{elapsed_precise}] [{bar:40}] [eta: {eta}]\n  {msg}")
+            .unwrap()
+            .progress_chars("█>-"),
+        );
+        let pb_clone = pb.clone();
         let state = RefCell::new(State {
             progress: None,
             total: 0,
             current: 0,
             path: None,
-            newline: false,
+            pb
         });
         let mut cb = RemoteCallbacks::new();
         cb.transfer_progress(|stats| {
             let mut state = state.borrow_mut();
             state.progress = Some(stats.to_owned());
-            print(&mut state);
+            update_progress_bar(&mut state);
             true
         });
 
@@ -115,7 +129,7 @@ mod git {
             state.path = path.map(|p| p.to_path_buf());
             state.current = cur;
             state.total = total;
-            print(&mut state);
+            update_progress_bar(&mut state);
         });
 
         let mut fo = FetchOptions::new();
@@ -126,6 +140,7 @@ mod git {
             repo.branch(branch);
         }
         repo.clone(url, path)?;
+        pb_clone.finish();
         println!();
 
         Ok(())
