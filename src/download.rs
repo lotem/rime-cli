@@ -37,10 +37,10 @@ mod git {
         AnnotatedCommit, AutotagOption, ErrorClass, ErrorCode, FetchOptions, Progress, Reference,
         Remote, RemoteCallbacks, Repository,
     };
+    use indicatif::{ProgressBar, ProgressStyle};
     use std::cell::RefCell;
     use std::io::{self, Write};
     use std::path::{Path, PathBuf};
-    use indicatif::{ProgressBar, ProgressStyle};
 
     fn update_progress_bar(state: &mut State) {
         if let Some(progress) = &state.progress {
@@ -79,10 +79,10 @@ mod git {
                     state.current,
                     state.total,
                     state
-                    .path
-                    .as_ref()
-                    .map(|s| s.to_string_lossy().into_owned())
-                    .unwrap_or_default()
+                        .path
+                        .as_ref()
+                        .map(|s| s.to_string_lossy().into_owned())
+                        .unwrap_or_default()
                 )
             }
         } else {
@@ -103,9 +103,9 @@ mod git {
         let pb = ProgressBar::new(0);
         pb.set_style(
             ProgressStyle::default_bar()
-            .template("{spinner:.green} [{elapsed_precise}] [{bar:40}] [eta: {eta}]\n  {msg}")
-            .unwrap()
-            .progress_chars("█>-"),
+                .template("{spinner:.green} [{elapsed_precise}] [{bar:40}] [eta: {eta}]\n  {msg}")
+                .unwrap()
+                .progress_chars("█>-"),
         );
         let pb_clone = pb.clone();
         let state = RefCell::new(State {
@@ -113,7 +113,7 @@ mod git {
             total: 0,
             current: 0,
             path: None,
-            pb
+            pb,
         });
         let mut cb = RemoteCallbacks::new();
         cb.transfer_progress(|stats| {
