@@ -5,35 +5,36 @@ use std::path::PathBuf;
 use crate::recipe::配方名片;
 
 #[derive(Clone)]
-pub struct 代碼庫地址 {
-    pub 網址: String,
-    pub 分支: Option<String>,
-}
-
-impl fmt::Display for 代碼庫地址 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self.分支 {
-            Some(分支) => write!(f, "{}@{}", self.網址, 分支),
-            None => write!(f, "{}", self.網址),
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct 配方包 {
+pub struct 配方包<'a> {
     pub 配方: 配方名片,
-    pub 倉庫: 代碼庫地址,
+    pub 倉庫域名: Option<&'a str>,
     // pub 內容文件 Vec<PathBuf>,
 }
 
-impl 配方包 {
+impl 配方包<'_> {
+    pub fn 倉庫地址(&self) -> String {
+        format!(
+            "https://{}/{}/{}.git",
+            self.倉庫域名.unwrap_or("github"),
+            self.配方.方家,
+            self.配方.名字
+        )
+    }
+
+    pub fn 倉庫分支(&self) -> Option<&str> {
+        self.配方.版本.as_deref()
+    }
+
     pub fn 本地路徑(&self) -> PathBuf {
         ["pkg", self.配方.方家.as_str(), self.配方.名字.as_str()]
             .iter()
             .collect()
     }
 
-    pub fn 按倉庫分組(衆配方: &[配方名片]) -> HashMap<配方名片, Vec<配方包>> {
+    pub fn 按倉庫分組<'a>(
+        衆配方: &[配方名片],
+        倉庫域名: Option<&'a str>,
+    ) -> HashMap<配方名片, Vec<配方包<'a>>> {
         let mut 按倉庫分組 = HashMap::new();
         衆配方.iter().for_each(|配方| {
             let 包名 = 配方名片 {
@@ -43,31 +44,20 @@ impl 配方包 {
             按倉庫分組
                 .entry(包名)
                 .or_insert_with(Vec::new)
-                .push(配方包::from(配方.clone()));
+                .push(配方包 {
+                    配方: 配方.clone(),
+                    倉庫域名,
+                });
         });
         按倉庫分組
     }
 }
 
-impl From<&str> for 配方包 {
-    fn from(source: &str) -> Self {
-        let 配方 = 配方名片::from(source);
-        Self::from(配方)
-    }
-}
-
-impl From<配方名片> for 配方包 {
-    fn from(source: 配方名片) -> Self {
-        let 倉庫 = 配方倉庫地址(&source);
-        Self {
-            配方: source, 倉庫
+impl fmt::Display for 配方包<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self.倉庫分支() {
+            Some(分支) => write!(f, "{}@{}", self.倉庫地址(), 分支),
+            None => write!(f, "{}", self.倉庫地址()),
         }
-    }
-}
-
-fn 配方倉庫地址(配方: &配方名片) -> 代碼庫地址 {
-    代碼庫地址 {
-        網址: format!("https://github.com/{}/{}.git", 配方.方家, 配方.名字),
-        分支: 配方.版本.clone(),
     }
 }

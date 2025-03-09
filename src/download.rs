@@ -3,11 +3,33 @@ use crate::recipe::配方名片;
 
 use anyhow::anyhow;
 use std::path::Path;
+use structopt::StructOpt;
 
-pub fn 下載配方包(衆配方: &[配方名片]) -> anyhow::Result<()> {
-    for (包名, 一組配方包) in 配方包::按倉庫分組(衆配方) {
+#[derive(Debug, StructOpt)]
+pub struct 下載參數 {
+    /// 倉庫域名
+    #[structopt(short, long)]
+    host: Option<String>,
+    /// 代理服務器地址
+    #[structopt(short, long)]
+    proxy: Option<String>,
+}
+
+impl 下載參數 {
+    pub fn 設置代理(&self) {
+        if let Some(proxy) = &self.proxy {
+            log::debug!("設置代理 {}", proxy);
+            std::env::set_var("http_proxy", proxy);
+            std::env::set_var("https_proxy", proxy);
+        }
+    }
+}
+
+pub fn 下載配方包(衆配方: &[配方名片], 參數: 下載參數) -> anyhow::Result<()> {
+    參數.設置代理();
+    for (包名, 一組配方包) in 配方包::按倉庫分組(衆配方, 參數.host.as_deref()) {
         let 包 = 一組配方包.first().ok_or(anyhow!("至少應有一個配方包"))?;
-        log::debug!("下載配方包: {}, 位於 {}", 包名, 包.倉庫.網址);
+        log::debug!("下載配方包: {}, 位於 {}", 包名, 包.倉庫地址());
         let 本地倉庫 = 包.本地路徑();
         if 本地倉庫.exists() {
             同步既存倉庫(包, &本地倉庫)?;
@@ -19,15 +41,15 @@ pub fn 下載配方包(衆配方: &[配方名片]) -> anyhow::Result<()> {
 }
 
 fn 搬運倉庫(包: &配方包, 本地路徑: &Path) -> anyhow::Result<()> {
-    let 網址 = &包.倉庫.網址;
-    let 分支 = 包.倉庫.分支.as_deref();
+    let 網址 = &包.倉庫地址();
+    let 分支 = 包.倉庫分支();
     git::clone(網址, 分支, 本地路徑)?;
     Ok(())
 }
 
 fn 同步既存倉庫(包: &配方包, 本地路徑: &Path) -> anyhow::Result<()> {
     const 遠端代號: &str = "origin";
-    let 遠端分支 = 包.倉庫.分支.as_deref().unwrap_or("master");
+    let 遠端分支 = 包.倉庫分支().unwrap_or("master");
     git::pull(本地路徑, 遠端代號, 遠端分支)?;
     Ok(())
 }
@@ -310,8 +332,6 @@ mod git {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::package::代碼庫地址;
-    use crate::recipe::配方名片;
 
     #[ignore]
     #[test]
@@ -321,14 +341,11 @@ mod tests {
         搬運倉庫(
             &配方包 {
                 配方: 配方名片 {
-                    方家: "test".to_string(),
-                    名字: "test-clone".to_string(),
+                    方家: "lotem".to_string(),
+                    名字: "rime-cli".to_string(),
                     版本: None,
                 },
-                倉庫: 代碼庫地址 {
-                    網址: "https://github.com/rime/rime-prelude.git".to_string(),
-                    分支: None,
-                },
+                倉庫域名: None,
             },
             &本地測試路徑,
         )?;
