@@ -85,12 +85,17 @@ fn 獲取最終下載鏈接(版本: Option<&str>) -> Option<String> {
 }
 
 // 已實現 小狼毫 更新rime.dll
-fn 下載並更新引擎庫(鏈接: &String) -> anyhow::Result<()>{
+fn 下載並更新引擎庫(鏈接: &String, host: String) -> anyhow::Result<()>{
     let 路徑 = Path::new(&鏈接);
+    let mut 下載鏈接 = 鏈接.clone();
+    if !host.is_empty() {
+        下載鏈接 = 下載鏈接.replace("github.com", &host);
+        println!("下載鏈接變爲: {}", 下載鏈接);
+    }
     let 文件名 = 路徑.file_name()
         .and_then(|名字| 名字.to_str().map(|s| s.to_string()))
         .unwrap_or_else(|| "无效文件名".to_string());
-    let mut 網絡響應 = get(鏈接.as_str())?;
+    let mut 網絡響應 = get(下載鏈接.as_str())?;
     if !網絡響應.status().is_success() {
         eprintln!("網絡響應不成功");
         anyhow::bail!(format!("下載文件 '{}' 失敗 orz", 網絡響應.status()));
@@ -262,7 +267,7 @@ pub fn 更新引擎庫(版本: &String, 參數: &下載參數) -> anyhow::Result
     參數.設置代理();
     let 鏈接 = 獲取最終下載鏈接(Some(版本));
     if let Some(鏈接) = 鏈接 {
-        下載並更新引擎庫(&鏈接)
+        下載並更新引擎庫(&鏈接, 參數.host.clone().expect(""))
     } else {
         anyhow::bail!("未找到合適的下載鏈接.");
     }
