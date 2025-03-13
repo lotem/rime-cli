@@ -90,7 +90,6 @@ fn 下載並更新引擎庫(鏈接: &String, host: String) -> anyhow::Result<()>
     let mut 下載鏈接 = 鏈接.clone();
     if !host.is_empty() {
         下載鏈接 = 下載鏈接.replace("github.com", &host);
-        println!("下載鏈接變爲: {}", 下載鏈接);
     }
     let 文件名 = 路徑.file_name()
         .and_then(|名字| 名字.to_str().map(|s| s.to_string()))
@@ -267,7 +266,7 @@ pub fn 更新引擎庫(版本: &String, 參數: &下載參數) -> anyhow::Result
     參數.設置代理();
     let 鏈接 = 獲取最終下載鏈接(Some(版本));
     if let Some(鏈接) = 鏈接 {
-        下載並更新引擎庫(&鏈接, 參數.host.clone().expect(""))
+        下載並更新引擎庫(&鏈接, 參數.host.clone().unwrap_or("".to_string()))
     } else {
         anyhow::bail!("未找到合適的下載鏈接.");
     }
