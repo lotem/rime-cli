@@ -234,7 +234,7 @@ fn 解壓並更新引擎(文件名: &String) -> anyhow::Result<()>{
                 let 目標庫文件 = Path::new(&小狼毫根目錄).join("rime.dll");
                 // 複製新文件
                 match std::fs::copy(Path::new(&目錄名.as_str()).join("dist/lib/rime.dll"), &目標庫文件) {
-                    Ok(_) => { println!(" 小狼毫引擎 '{}' 已更新", &目標庫文件.display()) },
+                    Ok(_) => { println!(" 中州韻引擎 '{}' 已更新", &目標庫文件.display()) },
                     Err(e) => { eprintln!("複製文件時發生錯誤: {}", e) }
                 }
                 // 啓動小狼毫算法服務
