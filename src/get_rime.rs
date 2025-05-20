@@ -258,7 +258,7 @@ fn 解壓並更新引擎(文件名: &String) -> anyhow::Result<()>{
 }
 
 #[cfg(not(windows))]
-fn 解壓並更新引擎(文件名: String) -> anyhow::Result<()>{
+fn 解壓並更新引擎(文件名: &String) -> anyhow::Result<()>{
     todo!("還不會做呢！");
 }
 
