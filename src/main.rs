@@ -41,6 +41,7 @@ enum 子命令 {
         #[structopt(flatten)]
         下載參數: 下載參數,
     },
+    /// 更新引擎庫
     Get {
         tag: Option<String>,
         #[structopt(flatten)]

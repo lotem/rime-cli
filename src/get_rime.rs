@@ -72,7 +72,7 @@ fn 獲取最終下載鏈接(版本: Option<&str>) -> Option<String> {
 
     for 鏈接 in 鏈接清單 {
         // 排除deps附件
-        let mut 判斷條件 = 系統模式.is_match(&鏈接) && 構建模式.is_match(&鏈接) 
+        let 判斷條件 = 系統模式.is_match(&鏈接) && 構建模式.is_match(&鏈接) 
             && !Regex::new("deps").unwrap().is_match(&鏈接);
         #[cfg(windows)] {
             判斷條件 = 判斷條件 && 架構模式.is_match(&鏈接);
@@ -258,7 +258,7 @@ fn 解壓並更新引擎(文件名: &String) -> anyhow::Result<()>{
 }
 
 #[cfg(not(windows))]
-fn 解壓並更新引擎(文件名: &String) -> anyhow::Result<()>{
+fn 解壓並更新引擎(_文件名: &String) -> anyhow::Result<()>{
     todo!("還不會做呢！");
 }
 
