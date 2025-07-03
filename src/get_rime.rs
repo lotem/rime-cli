@@ -72,7 +72,7 @@ fn 獲取最終下載鏈接(版本: Option<&str>) -> Option<String> {
 
     for 鏈接 in 鏈接清單 {
         // 排除deps附件
-        let 判斷條件 = 系統模式.is_match(&鏈接) && 構建模式.is_match(&鏈接) 
+        let mut 判斷條件 = 系統模式.is_match(&鏈接) && 構建模式.is_match(&鏈接) 
             && !Regex::new("deps").unwrap().is_match(&鏈接);
         #[cfg(windows)] {
             判斷條件 = 判斷條件 && 架構模式.is_match(&鏈接);
