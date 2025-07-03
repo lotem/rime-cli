@@ -15,7 +15,7 @@ impl 配方包<'_> {
     pub fn 倉庫地址(&self) -> String {
         format!(
             "https://{}/{}/{}.git",
-            self.倉庫域名.unwrap_or("github"),
+            self.倉庫域名.unwrap_or("github.com"),
             self.配方.方家,
             self.配方.名字
         )
