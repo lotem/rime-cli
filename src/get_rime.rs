@@ -6,13 +6,15 @@ use reqwest::{blocking::get, self, header::CONTENT_LENGTH};
 use crate::download::下載參數;
 
 #[derive(serde::Deserialize)]
-struct Asset {
-    browser_download_url: String,
+struct 附件信息 {
+    #[serde(rename = "browser_download_url")]
+    下載鏈接: String,
 }
 
 #[derive(serde::Deserialize)]
-struct Release {
-    assets: Vec<Asset>,
+struct 版本信息 {
+    #[serde(rename = "assets")]
+    附件清單: Vec<附件信息>,
 }
 
 // 獲取指定版本的全部附件下載鏈接
@@ -31,9 +33,9 @@ async fn 全部附件下載鏈接清單(版本: Option<&str>) -> Vec<String> {
         .await;
     match 網絡響應 {
         Ok(響應) if 響應.status().is_success() => {
-            if let Ok(release) = 響應.json::<Release>().await {
-                for asset in release.assets {
-                    附件下載鏈接清單.push(asset.browser_download_url);
+            if let Ok(版本_json) = 響應.json::<版本信息>().await {
+                for 附件_json in 版本_json.附件清單 {
+                    附件下載鏈接清單.push(附件_json.下載鏈接);
                 }
             } else {
                 eprintln!("解析 JSON 失败");
@@ -68,7 +70,7 @@ fn 獲取最終下載鏈接(版本: Option<&str>) -> Option<String> {
     let 構建模式 = Regex::new(&構建).unwrap();
     // 小狼毫根據當前系統狀態，保留正確的位數
     #[cfg(windows)]
-    let 架構模式 = Regex::new(&winutils::獲取小狼毫架構模式()).unwrap();
+    let 架構模式 = Regex::new(&視窗組件::獲取小狼毫架構模式()).unwrap();
 
     for 鏈接 in 鏈接清單 {
         // 排除deps附件
@@ -85,11 +87,11 @@ fn 獲取最終下載鏈接(版本: Option<&str>) -> Option<String> {
 }
 
 // 已實現 小狼毫 更新rime.dll
-fn 下載並更新引擎庫(鏈接: &String, host: String) -> anyhow::Result<()>{
+fn 下載並更新引擎庫(鏈接: &String, 域名: String) -> anyhow::Result<()>{
     let 路徑 = Path::new(&鏈接);
     let mut 下載鏈接 = 鏈接.clone();
-    if !host.is_empty() {
-        下載鏈接 = 下載鏈接.replace("github.com", &host);
+    if !域名.is_empty() {
+        下載鏈接 = 下載鏈接.replace("github.com", &域名);
     }
     let 文件名 = 路徑.file_name()
         .and_then(|名字| 名字.to_str().map(|s| s.to_string()))
@@ -165,7 +167,7 @@ fn 下載並更新引擎庫(鏈接: &String, host: String) -> anyhow::Result<()>
 }
 
 #[cfg(windows)]
-mod winutils {
+mod 視窗組件 {
     use windows::Win32::System::SystemInformation::{
         GetNativeSystemInfo, PROCESSOR_ARCHITECTURE, PROCESSOR_ARCHITECTURE_AMD64, PROCESSOR_ARCHITECTURE_ARM64, SYSTEM_INFO
     };
@@ -173,7 +175,7 @@ mod winutils {
     use winreg::RegKey;
     use std::ffi::OsStr;
 
-    fn is_arch(arch: PROCESSOR_ARCHITECTURE) -> bool {
+    fn 檢查架構(arch: PROCESSOR_ARCHITECTURE) -> bool {
         let mut info = SYSTEM_INFO::default();
         unsafe {
             GetNativeSystemInfo(&mut info);
@@ -181,33 +183,33 @@ mod winutils {
         }
     }
 
-    fn is_native_amd64() -> bool { is_arch(PROCESSOR_ARCHITECTURE_AMD64) }
+    fn 系統是amd64架構() -> bool { 檢查架構(PROCESSOR_ARCHITECTURE_AMD64) }
 
-    fn is_native_arm64() -> bool { is_arch(PROCESSOR_ARCHITECTURE_ARM64) }
+    fn 系統是arm64架構() -> bool { 檢查架構(PROCESSOR_ARCHITECTURE_ARM64) }
 
-    fn is_at_least_win11() -> bool {
-        let ver = OsVersion::current();
-        ver.major > 10 && ver.build >= 22000
+    fn 版本高於_win11() -> bool {
+        let 系統版本 = OsVersion::current();
+        系統版本.major > 10 && 系統版本.build >= 22000
     }
 
     pub fn 獲取小狼毫架構模式() -> String {
-        if is_at_least_win11() {
-            if is_native_arm64() || is_native_amd64() {"x64".to_string()}
+        if 版本高於_win11() {
+            if 系統是arm64架構() || 系統是amd64架構() {"x64".to_string()}
             else { "x86".to_string() }
         } else {
-            if is_native_amd64() {"x64".to_string()}
+            if 系統是amd64架構() {"x64".to_string()}
             else { "x86".to_string() }
         }
     }
 
     pub fn 獲取小狼毫程序目錄() -> Option<String> {
         let 註冊表路徑 = {
-            if is_native_arm64() || is_native_amd64() { OsStr::new("SOFTWARE\\WOW6432Node\\Rime\\Weasel") }
+            if 系統是arm64架構() || 系統是amd64架構() { OsStr::new("SOFTWARE\\WOW6432Node\\Rime\\Weasel") }
             else { OsStr::new("SOFTWARE\\Rime\\Weasel") }
         };
         RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE)
             .open_subkey(註冊表路徑)
-            .and_then(|key| key.get_value("WeaselRoot"))
+            .and_then(|注冊表鍵| 注冊表鍵.get_value("WeaselRoot"))
             .ok()
     }
 
@@ -215,7 +217,7 @@ mod winutils {
 
 #[cfg(windows)]
 fn 解壓並更新引擎(文件名: &String) -> anyhow::Result<()>{
-    match winutils::獲取小狼毫程序目錄() {
+    match 視窗組件::獲取小狼毫程序目錄() {
         Some(小狼毫根目錄) => {
             let 小狼毫算法服務 = Path::new(&小狼毫根目錄).join("WeaselServer.exe");
             if 小狼毫算法服務.exists() {
