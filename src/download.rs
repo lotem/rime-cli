@@ -9,10 +9,10 @@ use structopt::StructOpt;
 pub struct 下載參數 {
     /// 倉庫域名
     #[structopt(short, long)]
-    host: Option<String>,
+    pub host: Option<String>,
     /// 代理服務器地址
     #[structopt(short, long)]
-    proxy: Option<String>,
+    pub proxy: Option<String>,
 }
 
 impl 下載參數 {
