@@ -13,6 +13,9 @@ pub struct 下載參數 {
     /// 代理服務器地址
     #[structopt(short, long)]
     proxy: Option<String>,
+    /// token 令牌
+    #[structopt(short, long)]
+    token: Option<String>,
 }
 
 impl 下載參數 {
@@ -21,6 +24,9 @@ impl 下載參數 {
     }
     pub fn 倉庫域名(&self) -> Option<&str> {
         self.host.as_deref()
+    }
+    pub fn 令牌(&self) -> Option<&str> {
+        self.token.as_deref()
     }
 }
 

@@ -6,6 +6,7 @@ mod install;
 mod package;
 mod recipe;
 mod rime_levers;
+mod get_rime;
 
 use download::{下載參數, 下載配方包};
 use install::安裝配方;
@@ -37,6 +38,12 @@ enum 子命令 {
     Install {
         /// 要安裝的配方
         recipes: Vec<String>,
+        #[structopt(flatten)]
+        下載參數: 下載參數,
+    },
+    /// 更新引擎庫
+    Get {
+        tag: Option<String>,
         #[structopt(flatten)]
         下載參數: 下載參數,
     },
@@ -106,6 +113,10 @@ fn main() -> anyhow::Result<()> {
         }
         子命令::Select { schema } => {
             選擇輸入方案(&schema)?;
+        }
+        子命令::Get { tag, 下載參數 } => {
+            let 目標版本 = tag.unwrap_or("".to_string());
+            get_rime::更新引擎庫(&目標版本, &下載參數)?;
         }
         _ => todo!("還沒做呢"),
     }
