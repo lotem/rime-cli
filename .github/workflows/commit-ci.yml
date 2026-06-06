@@ -18,7 +18,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-
+    env:
+      rime_version: '1.17.0'
+      rime_git_hash: '33e7814'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,7 +32,7 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y librime-dev
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            curl -L https://github.com/rime/librime/releases/download/1.15.0/rime-75bc43a-macOS-universal.tar.bz2 -o rime.tar.bz2
+            curl -L https://github.com/rime/librime/releases/download/${rime_version}/rime-${rime_git_hash}-macOS-universal.tar.bz2 -o rime.tar.bz2
             mkdir -p librime
             tar xf rime.tar.bz2 -C librime
             echo "LIBRIME_INCLUDE_DIR=$GITHUB_WORKSPACE/librime/dist/include" >> $GITHUB_ENV
@@ -40,7 +42,7 @@ jobs:
             # set RUSTFLAGS="-C link-arg=-Wl,-rpath,@executable_path"
             echo "RUSTFLAGS=-C link-arg=-Wl,-rpath,@executable_path" >> $GITHUB_ENV
           elif [[ "$RUNNER_OS" == "Windows" ]]; then
-            curl -L https://github.com/rime/librime/releases/download/1.15.0/rime-75bc43a-Windows-msvc-x64.7z -o librime.7z
+            curl -L https://github.com/rime/librime/releases/download/${rime_version}/rime-${rime_git_hash}-Windows-msvc-x64.7z -o librime.7z
             7z x librime.7z -olibrime
             # 变量写法注意：Windows 环境变量分隔要用 \\ 或 /
             echo "LIBRIME_INCLUDE_DIR=$GITHUB_WORKSPACE\\librime\\dist\\include" >> $GITHUB_ENV
@@ -69,12 +71,12 @@ jobs:
             7z a rime-cli-Windows.7z rime.exe rime.dll
           else
             cp target/release/rime ./
-            cp librime/dist/lib/librime.1.15.0.dylib ./
+            cp librime/dist/lib/librime.${rime_version}.dylib ./
             cp -r librime/dist/lib/rime-plugins ./
-            ln -s librime.1.15.0.dylib librime.1.dylib
+            ln -s librime.${rime_version}.dylib librime.1.dylib
             ln -s librime.1.dylib librime.dylib
             # tar rime librime*.dylib rime-plugins to tar.gz archive
-            tar -czf rime-cli-macOS.tar.gz rime librime.1.15.0.dylib librime.1.dylib librime.dylib rime-plugins
+            tar -czf rime-cli-macOS.tar.gz rime librime.${rime_version}.dylib librime.1.dylib librime.dylib rime-plugins
           fi
 
       - name: Archive production artifacts
