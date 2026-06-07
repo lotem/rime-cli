@@ -1,14 +1,30 @@
 [env]
-# for building librime-sys
-LIBRIME_INCLUDE_DIR = "${CARGO_MAKE_WORKING_DIRECTORY}/librime/dist/include"
-LIBRIME_LIB_DIR = "${CARGO_MAKE_WORKING_DIRECTORY}/librime/dist/lib"
-
 # 用於下載、打包任務的 RIME 版本號變量。請同時更新下載任務中的文件名、校驗和。
 RIME_VERSION = "1.17.0"
 
+# macOS 與 Windows 共享的變量
+LIBRIME_INCLUDE_DIR = { value = "${CARGO_MAKE_WORKING_DIRECTORY}/librime/dist/include", condition = { platforms = ["mac", "windows"] } }
+LIBRIME_LIB_DIR = { value = "${CARGO_MAKE_WORKING_DIRECTORY}/librime/dist/lib", condition = { platforms = ["mac", "windows"] } }
+
+# macOS 專屬變量
+RUSTFLAGS = { value = "-C link-arg=-Wl,-rpath,@executable_path", condition = { platforms = ["mac"] } }
+
 [tasks.pre-build]
-description = "編譯前的預處理──檢查並在必要時觸發 librime 依賴的下載與解壓"
-condition = { platforms = ["mac", "windows"], files_not_exist = ["${CARGO_MAKE_WORKING_DIRECTORY}/librime/version-info.txt"] }
+description = "編譯前的預處理 ── 安裝 Linux 系統依賴或觸發 Mac/Windows 的 librime 下載"
+linux_alias = "pre-build-linux"
+mac_alias = "pre-build-desktop"
+windows_alias = "pre-build-desktop"
+
+[tasks.pre-build-linux]
+description = "Linux 平台透過 apt-get 安裝 librime-dev 系統依賴"
+script = '''
+sudo apt-get update
+sudo apt-get install -y librime-dev
+'''
+
+[tasks.pre-build-desktop]
+description = "Mac/Windows 平台檢查並下載預編譯的 librime 產物"
+condition = { files_not_exist = ["${CARGO_MAKE_WORKING_DIRECTORY}/librime/version-info.txt"] }
 run_task = { name = "fetch-rime-artifact" }
 
 [tasks.fetch-rime-artifact]
@@ -76,7 +92,7 @@ tar -czf rime-cli-macOS.tar.gz rime librime.${RIME_VERSION}.dylib librime.1.dyli
 
 [tasks.package-release-windows]
 description = "爲 Windows 平台收集二進位檔與 dll，並打包爲 7z 壓縮包"
-script_runner = "bash"
+script_runner = "powershell"
 script = '''
 cp target/release/rime.exe ./
 cp librime/dist/lib/rime.dll ./

@@ -27,8 +27,7 @@ jobs:
         with:
           tool: cargo-make
 
-      - name: Download librime artifact
-        shell: bash
+      - name: Install librime
         run: |
           cargo make pre-build
 
