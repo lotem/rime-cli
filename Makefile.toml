@@ -12,15 +12,15 @@ mac_alias = "fetch-rime-artifact-mac"
 windows_alias = "fetch-rime-artifact-windows"
 
 [tasks.fetch-rime-artifact-mac]
-env.rime_release = "1.11.0"
-env.rime_artifact = "rime-76a0a16-macOS-universal.tar.bz2"
-env.rime_artifact_checksum = "1c70a25eedc574e915be75c44fc4386be12d868945e40b3f86afb64dfddea7b7"
+env.rime_release = "1.17.0"
+env.rime_artifact = "rime-33e7814-macOS-universal.tar.bz2"
+env.rime_artifact_checksum = "11d8dc663c6ec06d5ccb6111ba664a9e7b631b703ac6acd07cffbac664021850"
 run_task = { name = ["download-rime-artifact", "extract-rime-artifact-posix"] }
 
 [tasks.fetch-rime-artifact-windows]
-env.rime_release = "1.11.0"
-env.rime_artifact = "rime-76a0a16-Windows-msvc-x64.7z"
-env.rime_artifact_checksum = "32908951837501da8957d350765c9c3786c3998fa17fbdfc02b7c3e7aaaf5780"
+env.rime_release = "1.17.0"
+env.rime_artifact = "rime-33e7814-Windows-msvc-x64.7z"
+env.rime_artifact_checksum = "7478c7caa4ff6b37de86daba1f7ce4a994a4f5ba24872a820fb2b3a9b01fed15"
 run_task = { name = ["download-rime-artifact", "extract-rime-artifact-windows"] }
 
 [tasks.download-rime-artifact]
