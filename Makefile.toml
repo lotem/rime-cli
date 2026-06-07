@@ -3,33 +3,39 @@
 LIBRIME_INCLUDE_DIR = "${CARGO_MAKE_WORKING_DIRECTORY}/librime/dist/include"
 LIBRIME_LIB_DIR = "${CARGO_MAKE_WORKING_DIRECTORY}/librime/dist/lib"
 
+# 用於下載、打包任務的 RIME 版本號變量。請同時更新下載任務中的文件名、校驗和。
+RIME_VERSION = "1.17.0"
+
 [tasks.pre-build]
+description = "編譯前的預處理──檢查並在必要時觸發 librime 依賴的下載與解壓"
 condition = { platforms = ["mac", "windows"], files_not_exist = ["${CARGO_MAKE_WORKING_DIRECTORY}/librime/version-info.txt"] }
 run_task = { name = "fetch-rime-artifact" }
 
 [tasks.fetch-rime-artifact]
+description = "分流任務：根據目前的作業系統平台選擇對應的 librime 下載與解壓流程"
 mac_alias = "fetch-rime-artifact-mac"
 windows_alias = "fetch-rime-artifact-windows"
 
 [tasks.fetch-rime-artifact-mac]
-env.rime_release = "1.17.0"
+description = "下載並解壓 macOS 平台所需的 librime 預編譯產物"
 env.rime_artifact = "rime-33e7814-macOS-universal.tar.bz2"
 env.rime_artifact_checksum = "11d8dc663c6ec06d5ccb6111ba664a9e7b631b703ac6acd07cffbac664021850"
 run_task = { name = ["download-rime-artifact", "extract-rime-artifact-posix"] }
 
 [tasks.fetch-rime-artifact-windows]
-env.rime_release = "1.17.0"
+description = "下載並解壓 Windows 平台所需的 librime 預編譯產物"
 env.rime_artifact = "rime-33e7814-Windows-msvc-x64.7z"
 env.rime_artifact_checksum = "7478c7caa4ff6b37de86daba1f7ce4a994a4f5ba24872a820fb2b3a9b01fed15"
 run_task = { name = ["download-rime-artifact", "extract-rime-artifact-windows"] }
 
 [tasks.download-rime-artifact]
+description = "利用 Duckscript 下載指定版本的 librime 產物，並進行 SHA256 安全校驗"
 script_runner = "@duckscript"
 script = '''
 download_file = set ${CARGO_MAKE_WORKING_DIRECTORY}/${rime_artifact}
 if not is_path_exists ${download_file}
   echo downloading ${rime_artifact}...
-  response_size = http_client --output-file ${download_file} https://github.com/rime/librime/releases/download/${rime_release}/${rime_artifact}
+  response_size = http_client --output-file ${download_file} https://github.com/rime/librime/releases/download/${RIME_VERSION}/${rime_artifact}
   assert ${response_size}
   echo downloaded ${response_size} bytes to ${download_file}
 else
@@ -41,11 +47,38 @@ assert_eq ${checksum} ${rime_artifact_checksum}
 '''
 
 [tasks.extract-rime-artifact-posix]
+description = "解壓 macOS 平台的 tar.bz2 歸檔文件至 librime 目錄"
 script = '''
 mkdir -p "${CARGO_MAKE_WORKING_DIRECTORY}/librime"
 tar -xjvf "${CARGO_MAKE_WORKING_DIRECTORY}/${rime_artifact}" -C "${CARGO_MAKE_WORKING_DIRECTORY}/librime"
 '''
 
 [tasks.extract-rime-artifact-windows]
+description = "解壓 Windows 平台的 7z 歸檔文件至 librime 目錄"
 command = "7z"
 args = ["x", "-y", "-o${CARGO_MAKE_WORKING_DIRECTORY}/librime", "${CARGO_MAKE_WORKING_DIRECTORY}/${rime_artifact}"]
+
+[tasks.package-release]
+description = "分流任務：將編譯產物與動態庫打包爲相應平台的壓縮包"
+mac_alias = "package-release-mac"
+windows_alias = "package-release-windows"
+
+[tasks.package-release-mac]
+description = "爲 macOS 平台收集二進位檔、動態庫與插件，建立軟連結並打包爲 tar.gz"
+script = '''
+cp target/release/rime ./
+cp librime/dist/lib/librime.${RIME_VERSION}.dylib ./
+cp -r librime/dist/lib/rime-plugins ./
+ln -sf librime.${RIME_VERSION}.dylib librime.1.dylib
+ln -sf librime.1.dylib librime.dylib
+tar -czf rime-cli-macOS.tar.gz rime librime.${RIME_VERSION}.dylib librime.1.dylib librime.dylib rime-plugins
+'''
+
+[tasks.package-release-windows]
+description = "爲 Windows 平台收集二進位檔與 dll，並打包爲 7z 壓縮包"
+script_runner = "bash"
+script = '''
+cp target/release/rime.exe ./
+cp librime/dist/lib/rime.dll ./
+7z a rime-cli-Windows.7z rime.exe rime.dll
+'''

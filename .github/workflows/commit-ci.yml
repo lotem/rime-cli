@@ -18,42 +18,18 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-    env:
-      rime_version: '1.17.0'
-      rime_git_hash: '33e7814'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install librime and set env
+      - name: Download librime artifact
         shell: bash
         run: |
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            sudo apt-get update
-            sudo apt-get install -y librime-dev
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            curl -L https://github.com/rime/librime/releases/download/${rime_version}/rime-${rime_git_hash}-macOS-universal.tar.bz2 -o rime.tar.bz2
-            mkdir -p librime
-            tar xf rime.tar.bz2 -C librime
-            echo "LIBRIME_INCLUDE_DIR=$GITHUB_WORKSPACE/librime/dist/include" >> $GITHUB_ENV
-            echo "LIBRIME_LIB_DIR=$GITHUB_WORKSPACE/librime/dist/lib"         >> $GITHUB_ENV
-            ls -l librime/dist/include
-            ls -l librime/dist/lib
-            # set RUSTFLAGS="-C link-arg=-Wl,-rpath,@executable_path"
-            echo "RUSTFLAGS=-C link-arg=-Wl,-rpath,@executable_path" >> $GITHUB_ENV
-          elif [[ "$RUNNER_OS" == "Windows" ]]; then
-            curl -L https://github.com/rime/librime/releases/download/${rime_version}/rime-${rime_git_hash}-Windows-msvc-x64.7z -o librime.7z
-            7z x librime.7z -olibrime
-            # 变量写法注意：Windows 环境变量分隔要用 \\ 或 /
-            echo "LIBRIME_INCLUDE_DIR=$GITHUB_WORKSPACE\\librime\\dist\\include" >> $GITHUB_ENV
-            echo "LIBRIME_LIB_DIR=$GITHUB_WORKSPACE\\librime\\dist\\lib"         >> $GITHUB_ENV
-            ls -l librime/dist/include
-            ls -l librime/dist/lib
-          fi
+          cargo make pre-build
 
       - name: Build
         run: |
-          cargo build --release
+          cargo make build-release
 
       # Test on Windows not ok yet
       #- name: Test
@@ -62,22 +38,8 @@ jobs:
 
       - name: Prepare package
         if: runner.os == 'Windows' || runner.os == 'macOS'
-        shell: bash
         run: |
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            cp target/release/rime.exe ./
-            cp librime/dist/lib/rime.dll ./
-            # 7z add rime.exe and rime.dll to 7z archive
-            7z a rime-cli-Windows.7z rime.exe rime.dll
-          else
-            cp target/release/rime ./
-            cp librime/dist/lib/librime.${rime_version}.dylib ./
-            cp -r librime/dist/lib/rime-plugins ./
-            ln -s librime.${rime_version}.dylib librime.1.dylib
-            ln -s librime.1.dylib librime.dylib
-            # tar rime librime*.dylib rime-plugins to tar.gz archive
-            tar -czf rime-cli-macOS.tar.gz rime librime.${rime_version}.dylib librime.1.dylib librime.dylib rime-plugins
-          fi
+          cargo make package-release
 
       - name: Archive production artifacts
         if: runner.os == 'Windows' || runner.os == 'macOS'
