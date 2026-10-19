@@ -2,11 +2,11 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 mod download;
+mod get_rime;
 mod install;
 mod package;
 mod recipe;
 mod rime_levers;
-mod get_rime;
 
 use download::{下載參數, 下載配方包};
 use install::安裝配方;

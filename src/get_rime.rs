@@ -1,10 +1,15 @@
-use tokio;
-use regex::Regex;
-use indicatif::{ProgressBar, ProgressStyle};
-use sha2::{Digest, Sha256};
-use std::{fs::File, io::{Write, Read}, time::Instant, path::{Path, PathBuf}};
-use reqwest::{self, header::CONTENT_LENGTH};
 use crate::download::下載參數;
+use indicatif::{ProgressBar, ProgressStyle};
+use regex::Regex;
+use reqwest::{self, header::CONTENT_LENGTH};
+use sha2::{Digest, Sha256};
+use std::{
+    fs::File,
+    io::{Read, Write},
+    path::{Path, PathBuf},
+    time::Instant,
+};
+use tokio;
 
 #[derive(serde::Deserialize)]
 struct 附件信息 {
@@ -13,7 +18,7 @@ struct 附件信息 {
     #[serde(rename = "digest")]
     檢驗碼: String,
     #[serde(rename = "name")]
-    文件名: String
+    文件名: String,
 }
 
 #[derive(serde::Deserialize)]
@@ -23,12 +28,19 @@ struct 版本信息 {
 }
 
 // 獲取指定版本的全部附件下載鏈接
-async fn 全部附件下載鏈接清單(版本: Option<&str>, 代理: Option<&str>, 令牌: Option<&str>) -> Vec<附件信息> {
+async fn 全部附件下載鏈接清單(
+    版本: Option<&str>,
+    代理: Option<&str>,
+    令牌: Option<&str>,
+) -> Vec<附件信息> {
     let 版本名 = 版本.unwrap_or("");
     let 接口鏈接 = if 版本名.is_empty() {
         "https://api.github.com/repos/rime/librime/releases/latest".to_string()
     } else {
-        format!("https://api.github.com/repos/rime/librime/releases/tags/{}", &版本名)
+        format!(
+            "https://api.github.com/repos/rime/librime/releases/tags/{}",
+            &版本名
+        )
     };
     let mut 附件下載鏈接清單: Vec<附件信息> = Vec::new();
     let 終端 = if let Some(代理地址) = 代理 {
@@ -39,9 +51,7 @@ async fn 全部附件下載鏈接清單(版本: Option<&str>, 代理: Option<&st
     } else {
         reqwest::Client::new()
     };
-    let mut 請求 = 終端
-        .get(&接口鏈接)
-        .header("User-Agent", "Rust reqwest");
+    let mut 請求 = 終端.get(&接口鏈接).header("User-Agent", "Rust reqwest");
     if let Some(token) = 令牌 {
         請求 = 請求.bearer_auth(token);
     }
@@ -54,14 +64,22 @@ async fn 全部附件下載鏈接清單(版本: Option<&str>, 代理: Option<&st
                 eprintln!("解析 JSON 失败");
             }
         }
-        Ok(響應) => { eprintln!("API請求失敗: {}", 響應.status()); }
-        Err(e) => { eprintln!("API請求錯誤: {}", e); }
+        Ok(響應) => {
+            eprintln!("API請求失敗: {}", 響應.status());
+        }
+        Err(e) => {
+            eprintln!("API請求錯誤: {}", e);
+        }
     }
     附件下載鏈接清單
 }
 
 // Windows使用msvc構建的版本， macOS用universal
-fn 獲取最終下載鏈接(版本: Option<&str>, 代理: Option<&str>, 令牌: Option<&str>) -> Option<附件信息> {
+fn 獲取最終下載鏈接(
+    版本: Option<&str>,
+    代理: Option<&str>,
+    令牌: Option<&str>,
+) -> Option<附件信息> {
     let 執行期 = tokio::runtime::Runtime::new().unwrap();
     let 鏈接清單 = 執行期.block_on(全部附件下載鏈接清單(版本, 代理, 令牌));
     let 系統 = match std::env::consts::OS {
@@ -70,7 +88,10 @@ fn 獲取最終下載鏈接(版本: Option<&str>, 代理: Option<&str>, 令牌: 
         _ => "未支持的操作系統",
     };
     if 系統 == "未支持的操作系統" {
-        eprintln!("您的系統 {} 不是Windows 或 macOS, 不支持該操作", std::env::consts::OS);
+        eprintln!(
+            "您的系統 {} 不是Windows 或 macOS, 不支持該操作",
+            std::env::consts::OS
+        );
         return None;
     }
     // Windows使用msvc構建的版本， macOS用universal
@@ -88,16 +109,20 @@ fn 獲取最終下載鏈接(版本: Option<&str>, 代理: Option<&str>, 令牌: 
     for 附件 in 鏈接清單 {
         let 鏈接 = &附件.下載鏈接;
         // 排除deps附件
-        #[cfg(windows)] {
-            let mut 判斷條件 = 系統模式.is_match(&鏈接) && 構建模式.is_match(&鏈接)
+        #[cfg(windows)]
+        {
+            let mut 判斷條件 = 系統模式.is_match(&鏈接)
+                && 構建模式.is_match(&鏈接)
                 && !Regex::new("deps").unwrap().is_match(&鏈接);
             判斷條件 = 判斷條件 && 架構模式.is_match(&鏈接);
             if 判斷條件 {
                 return Some(附件);
             }
         }
-        #[cfg(not(windows))] {
-            let 判斷條件 = 系統模式.is_match(&鏈接) && 構建模式.is_match(&鏈接)
+        #[cfg(not(windows))]
+        {
+            let 判斷條件 = 系統模式.is_match(&鏈接)
+                && 構建模式.is_match(&鏈接)
                 && !Regex::new("deps").unwrap().is_match(&鏈接);
             if 判斷條件 {
                 return Some(附件);
@@ -108,7 +133,11 @@ fn 獲取最終下載鏈接(版本: Option<&str>, 代理: Option<&str>, 令牌: 
 }
 
 // 已實現 小狼毫 更新rime.dll
-fn 下載並更新引擎庫(附件: &附件信息, 域名: String, 代理: Option<&str>) -> anyhow::Result<()> {
+fn 下載並更新引擎庫(
+    附件: &附件信息,
+    域名: String,
+    代理: Option<&str>,
+) -> anyhow::Result<()> {
     let 路徑 = Path::new(&附件.下載鏈接);
     let mut 下載鏈接 = 附件.下載鏈接.clone();
     if 域名 != "github.com" {
@@ -117,7 +146,8 @@ fn 下載並更新引擎庫(附件: &附件信息, 域名: String, 代理: Optio
     // 使用附件信息中的文件名，如果無法獲取則使用默認名稱
     let mut 文件名 = 附件.文件名.clone();
     if 文件名.is_empty() {
-        文件名 = 路徑.file_name()
+        文件名 = 路徑
+            .file_name()
             .and_then(|名字| 名字.to_str().map(|s| s.to_string()))
             .unwrap_or_else(|| "无效文件名".to_string());
     }
@@ -161,9 +191,9 @@ fn 下載並更新引擎庫(附件: &附件信息, 域名: String, 代理: Optio
     let 進度條 = ProgressBar::new(目標下載文件大小);
     進度條.set_style(
         ProgressStyle::default_bar()
-        .template("{spinner}[{bar:40}] {percent}% ({bytes} / {total_bytes}) (eta: {eta}) {msg}")
-        .unwrap()
-        .progress_chars("█>-"),
+            .template("{spinner}[{bar:40}] {percent}% ({bytes} / {total_bytes}) (eta: {eta}) {msg}")
+            .unwrap()
+            .progress_chars("█>-"),
     );
     // 創建文件
     let mut 目標文件 = match File::create(&文件名) {
@@ -176,12 +206,12 @@ fn 下載並更新引擎庫(附件: &附件信息, 域名: String, 代理: Optio
             } else {
                 anyhow::bail!(format!("創建文件 {} 失敗: {}", 文件名, e));
             }
-        },
+        }
     };
     let mut 緩存 = [0u8; 16 * 1024]; // 16KB per read
     let mut 已下載字節數 = 0u64;
     let 開始的時間 = Instant::now(); // Start the timer for speed calculation
-    // 下載寫入文件，並更新進度條
+                                     // 下載寫入文件，並更新進度條
     while let Ok(待讀取字節數) = 網絡響應.read(&mut 緩存) {
         // 下載已完成
         if 待讀取字節數 == 0 {
@@ -215,12 +245,13 @@ fn 下載並更新引擎庫(附件: &附件信息, 域名: String, 代理: Optio
 
 #[cfg(windows)]
 mod 視窗組件 {
+    use std::ffi::OsStr;
     use windows::Win32::System::SystemInformation::{
-        GetNativeSystemInfo, PROCESSOR_ARCHITECTURE, PROCESSOR_ARCHITECTURE_AMD64, PROCESSOR_ARCHITECTURE_ARM64, SYSTEM_INFO
+        GetNativeSystemInfo, PROCESSOR_ARCHITECTURE, PROCESSOR_ARCHITECTURE_AMD64,
+        PROCESSOR_ARCHITECTURE_ARM64, SYSTEM_INFO,
     };
     use windows_version::OsVersion;
     use winreg::RegKey;
-    use std::ffi::OsStr;
 
     fn 檢查架構(arch: PROCESSOR_ARCHITECTURE) -> bool {
         let mut info = SYSTEM_INFO::default();
@@ -230,9 +261,13 @@ mod 視窗組件 {
         }
     }
 
-    fn 系統是amd64架構() -> bool { 檢查架構(PROCESSOR_ARCHITECTURE_AMD64) }
+    fn 系統是amd64架構() -> bool {
+        檢查架構(PROCESSOR_ARCHITECTURE_AMD64)
+    }
 
-    fn 系統是arm64架構() -> bool { 檢查架構(PROCESSOR_ARCHITECTURE_ARM64) }
+    fn 系統是arm64架構() -> bool {
+        檢查架構(PROCESSOR_ARCHITECTURE_ARM64)
+    }
 
     fn 版本高於_win11() -> bool {
         let 系統版本 = OsVersion::current();
@@ -241,29 +276,37 @@ mod 視窗組件 {
 
     pub fn 獲取小狼毫架構模式() -> String {
         if 版本高於_win11() {
-            if 系統是arm64架構() || 系統是amd64架構() {"x64".to_string()}
-            else { "x86".to_string() }
+            if 系統是arm64架構() || 系統是amd64架構() {
+                "x64".to_string()
+            } else {
+                "x86".to_string()
+            }
         } else {
-            if 系統是amd64架構() {"x64".to_string()}
-            else { "x86".to_string() }
+            if 系統是amd64架構() {
+                "x64".to_string()
+            } else {
+                "x86".to_string()
+            }
         }
     }
 
     pub fn 獲取小狼毫程序目錄() -> Option<String> {
         let 註冊表路徑 = {
-            if 系統是arm64架構() || 系統是amd64架構() { OsStr::new("SOFTWARE\\WOW6432Node\\Rime\\Weasel") }
-            else { OsStr::new("SOFTWARE\\Rime\\Weasel") }
+            if 系統是arm64架構() || 系統是amd64架構() {
+                OsStr::new("SOFTWARE\\WOW6432Node\\Rime\\Weasel")
+            } else {
+                OsStr::new("SOFTWARE\\Rime\\Weasel")
+            }
         };
         RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE)
             .open_subkey(註冊表路徑)
             .and_then(|注冊表鍵| 注冊表鍵.get_value("WeaselRoot"))
             .ok()
     }
-
 }
 
 #[cfg(windows)]
-fn 解壓並更新引擎(文件名: &String) -> anyhow::Result<()>{
+fn 解壓並更新引擎(文件名: &String) -> anyhow::Result<()> {
     match 視窗組件::獲取小狼毫程序目錄() {
         Some(小狼毫根目錄) => {
             let 小狼毫算法服務 = Path::new(&小狼毫根目錄).join("WeaselServer.exe");
@@ -282,9 +325,16 @@ fn 解壓並更新引擎(文件名: &String) -> anyhow::Result<()>{
                 println!(" 小狼毫服務 '{}' 已退出", &小狼毫算法服務.display());
                 let 目標庫文件 = Path::new(&小狼毫根目錄).join("rime.dll");
                 // 複製新文件
-                match std::fs::copy(Path::new(&目錄名.as_str()).join("dist/lib/rime.dll"), &目標庫文件) {
-                    Ok(_) => { println!(" 中州韻引擎 '{}' 已更新", &目標庫文件.display()) },
-                    Err(e) => { eprintln!("複製文件時發生錯誤: {}", e) }
+                match std::fs::copy(
+                    Path::new(&目錄名.as_str()).join("dist/lib/rime.dll"),
+                    &目標庫文件,
+                ) {
+                    Ok(_) => {
+                        println!(" 中州韻引擎 '{}' 已更新", &目標庫文件.display())
+                    }
+                    Err(e) => {
+                        eprintln!("複製文件時發生錯誤: {}", e)
+                    }
                 }
                 // 啓動小狼毫算法服務
                 let _ = std::process::Command::new(&小狼毫算法服務)
@@ -294,33 +344,39 @@ fn 解壓並更新引擎(文件名: &String) -> anyhow::Result<()>{
                 println!(" 小狼毫服務 '{}' 已重啓", &小狼毫算法服務.display());
                 // 刪除臨時目錄
                 match std::fs::remove_dir_all(&目錄名) {
-                    Ok(_) => { println!(" 臨時目錄 '{}' 已刪除", &目錄名); },
-                    Err(e) => { anyhow::bail!(" 無法刪除目錄 '{}', {}", &目錄名, e); },
+                    Ok(_) => {
+                        println!(" 臨時目錄 '{}' 已刪除", &目錄名);
+                    }
+                    Err(e) => {
+                        anyhow::bail!(" 無法刪除目錄 '{}', {}", &目錄名, e);
+                    }
                 }
                 Ok(())
             } else {
                 anyhow::bail!("WeaselServer.exe 未找到.");
             }
-        },
-        None => { anyhow::bail!("WeaselRoot 未成功讀取."); }
+        }
+        None => {
+            anyhow::bail!("WeaselRoot 未成功讀取.");
+        }
     }
 }
 
 #[cfg(not(windows))]
-fn 解壓並更新引擎(_文件名: &String) -> anyhow::Result<()>{
+fn 解壓並更新引擎(_文件名: &String) -> anyhow::Result<()> {
     // 解壓更新鼠須管的rime引擎庫
     todo!("還不會做呢！");
 }
 
-pub fn 更新引擎庫(版本: &String, 參數: &下載參數) -> anyhow::Result<()>  {
+pub fn 更新引擎庫(版本: &String, 參數: &下載參數) -> anyhow::Result<()> {
     let 代理 = 參數.代理地址();
     // token 允許從參數傳入，也允許回退到環境變量；
     let token_owned = match 參數.令牌() {
         Some(t) => Some(t.to_string()),
-        None => {
-            std::env::var("GITHUB_TOKEN").ok().filter(|s| !s.is_empty())
-                .or_else(|| std::env::var("GH_TOKEN").ok().filter(|s| !s.is_empty()))
-        }
+        None => std::env::var("GITHUB_TOKEN")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .or_else(|| std::env::var("GH_TOKEN").ok().filter(|s| !s.is_empty())),
     };
     let 令牌 = token_owned.as_deref();
     let 附件 = 獲取最終下載鏈接(Some(版本), 代理, 令牌);
@@ -338,7 +394,9 @@ fn 文件_sha256(path: &Path) -> anyhow::Result<String> {
     let mut 緩衝 = [0u8; 16 * 1024];
     loop {
         let 已讀 = 文件.read(&mut 緩衝)?;
-        if 已讀 == 0 { break; }
+        if 已讀 == 0 {
+            break;
+        }
         雜湊器.update(&緩衝[..已讀]);
     }
     Ok(format!("{:x}", 雜湊器.finalize()))

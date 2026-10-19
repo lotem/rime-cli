@@ -52,7 +52,9 @@ fn 搬運倉庫(包: &配方包, 本地路徑: &Path, 代理: Option<&str>) -> a
     Ok(())
 }
 
-fn 同步既存倉庫(包: &配方包, 本地路徑: &Path, 代理: Option<&str>) -> anyhow::Result<()> {
+fn 同步既存倉庫(
+    包: &配方包, 本地路徑: &Path, 代理: Option<&str>
+) -> anyhow::Result<()> {
     const 遠端代號: &str = "origin";
     let 遠端分支 = 包.倉庫分支().unwrap_or("master");
     git::pull(本地路徑, 遠端代號, 遠端分支, 代理)?;
@@ -62,8 +64,8 @@ fn 同步既存倉庫(包: &配方包, 本地路徑: &Path, 代理: Option<&str>
 mod git {
     use git2::build::{CheckoutBuilder, RepoBuilder};
     use git2::{
-        AnnotatedCommit, AutotagOption, ErrorClass, ErrorCode, FetchOptions, Progress, Reference,
-        Remote, RemoteCallbacks, Repository, ProxyOptions,
+        AnnotatedCommit, AutotagOption, ErrorClass, ErrorCode, FetchOptions, Progress,
+        ProxyOptions, Reference, Remote, RemoteCallbacks, Repository,
     };
     use indicatif::{ProgressBar, ProgressStyle};
     use std::cell::RefCell;
@@ -126,13 +128,15 @@ mod git {
         pb: ProgressBar,
     }
 
-    fn create_pbar_and_opts(proxy: Option<&str>) -> (ProgressBar, FetchOptions<'static>, CheckoutBuilder<'static>) {
+    fn create_pbar_and_opts(
+        proxy: Option<&str>,
+    ) -> (ProgressBar, FetchOptions<'static>, CheckoutBuilder<'static>) {
         let pb = ProgressBar::new(0);
         pb.set_style(
             ProgressStyle::default_bar()
                 .template("{spinner:.green} [{elapsed_precise}] [{bar:40}] [eta: {eta}]\n  {msg}")
                 .unwrap()
-                .progress_chars("█>-")
+                .progress_chars("█>-"),
         );
         let pb_clone = pb.clone();
         let state: &'static RefCell<State> = Box::leak(Box::new(RefCell::new(State {
@@ -171,7 +175,12 @@ mod git {
         (pb_clone, fo, co)
     }
 
-    pub fn clone(url: &str, branch: Option<&str>, path: &Path, proxy: Option<&str>) -> Result<(), git2::Error> {
+    pub fn clone(
+        url: &str,
+        branch: Option<&str>,
+        path: &Path,
+        proxy: Option<&str>,
+    ) -> Result<(), git2::Error> {
         let (pb, fo, co) = create_pbar_and_opts(proxy);
         let mut repo = RepoBuilder::new();
         repo.fetch_options(fo).with_checkout(co);
