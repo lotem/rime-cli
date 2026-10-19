@@ -1,20 +1,38 @@
 use anyhow::{anyhow, bail};
 use rime::{
-    rime_api_call, rime_module_call, rime_struct_new, RimeConfig, RimeLeversApi, RimeTraits,
+    rime_api_call, rime_module_call, rime_struct_new, RimeConfig, RimeLeversApi, RimeSchemaList,
+    RimeTraits,
 };
 use std::ffi::{CStr, CString};
-use std::path::PathBuf;
+use std::path::Path;
 
-pub fn 設置引擎啓動參數(工作場地: &PathBuf) -> anyhow::Result<()> {
-    log::debug!("設置引擎啓動參數. 工作場地: {}", 工作場地.display());
-    std::fs::create_dir_all(工作場地)?;
-    let 場地〇 = CString::new(工作場地.to_str().ok_or(anyhow!("路徑編碼轉換錯誤"))?)?;
+#[cfg(test)]
+pub fn 設置引擎啓動參數(工作場地: &Path) -> anyhow::Result<()> {
+    設置引擎構建與整備參數(工作場地, 工作場地)
+}
+
+pub fn 設置引擎構建與整備參數(
+    源碼場地: &Path, 整備場地: &Path
+) -> anyhow::Result<()> {
+    let 編譯產物場地 = 整備場地.join("build");
+    log::debug!(
+        "設置引擎啓動參數. 源碼場地: {}, 整備場地: {}, 編譯產物場地: {}",
+        源碼場地.display(),
+        整備場地.display(),
+        編譯產物場地.display()
+    );
+    std::fs::create_dir_all(源碼場地)?;
+    std::fs::create_dir_all(&編譯產物場地)?;
+    let 源碼場地〇 = CString::new(源碼場地.to_str().ok_or(anyhow!("路徑編碼轉換錯誤"))?)?;
+    let 編譯產物場地〇 = CString::new(編譯產物場地.to_str().ok_or(anyhow!("路徑編碼轉換錯誤"))?)?;
     let 品名〇 = CString::new(env!("CARGO_PKG_NAME"))?;
     let 版本〇 = CString::new(env!("CARGO_PKG_VERSION"))?;
     let mut 啓動參數: RimeTraits = rime_struct_new!();
     啓動參數.data_size = std::mem::size_of::<RimeTraits>() as std::ffi::c_int;
-    啓動參數.shared_data_dir = 場地〇.as_ptr();
-    啓動參數.user_data_dir = 場地〇.as_ptr();
+    啓動參數.shared_data_dir = 源碼場地〇.as_ptr();
+    啓動參數.user_data_dir = 源碼場地〇.as_ptr();
+    啓動參數.prebuilt_data_dir = 編譯產物場地〇.as_ptr();
+    啓動參數.staging_dir = 編譯產物場地〇.as_ptr();
     啓動參數.distribution_name = 品名〇.as_ptr();
     啓動參數.distribution_code_name = 品名〇.as_ptr();
     啓動參數.distribution_version = 版本〇.as_ptr();
@@ -25,8 +43,94 @@ pub fn 設置引擎啓動參數(工作場地: &PathBuf) -> anyhow::Result<()> {
 pub fn 製備輸入法固件() -> anyhow::Result<()> {
     log::debug!("製備輸入法固件");
     rime_api_call!(deployer_initialize, std::ptr::null_mut());
-    rime_api_call!(deploy);
+    if rime_api_call!(deploy) == 0 {
+        rime_api_call!(finalize);
+        bail!("製備輸入法固件失敗");
+    }
     rime_api_call!(finalize);
+    Ok(())
+}
+
+pub fn 測試輸入法固件(整備場地: &Path, 衆方案: &[String]) -> anyhow::Result<()> {
+    log::debug!(
+        "測試輸入法固件. 整備場地: {}, 方案: {:?}",
+        整備場地.display(),
+        衆方案
+    );
+    let 默認配置文件 = 整備場地.join("build").join("default.yaml");
+    if !默認配置文件.exists() {
+        bail!("整備區尚未完成構建，缺少文件: {}", 默認配置文件.display());
+    }
+
+    let 用戶配置文件 = 整備場地.join("user.yaml");
+    let 原有內容 = if 用戶配置文件.exists() {
+        Some(std::fs::read(&用戶配置文件)?)
+    } else {
+        None
+    };
+
+    設置引擎構建與整備參數(整備場地, 整備場地)?;
+    rime_api_call!(initialize, std::ptr::null_mut());
+
+    let 會話 = rime_api_call!(create_session);
+    if 會話 == 0 {
+        rime_api_call!(finalize);
+        bail!("無法創建 Rime 測試會話");
+    }
+
+    let 待測方案列表: Vec<String> = if 衆方案.is_empty() {
+        let mut 方案清單: RimeSchemaList = unsafe { std::mem::zeroed() };
+        let mut 列表 = Vec::new();
+        if rime_api_call!(get_schema_list, &mut 方案清單) != 0 {
+            for i in 0..方案清單.size {
+                let 項 = unsafe { &*方案清單.list.add(i) };
+                if !項.schema_id.is_null() {
+                    if let Ok(id) = unsafe { CStr::from_ptr(項.schema_id) }.to_str() {
+                        列表.push(id.to_owned());
+                    }
+                }
+            }
+            rime_api_call!(free_schema_list, &mut 方案清單);
+        }
+        列表
+    } else {
+        衆方案.to_vec()
+    };
+
+    let 測試按鍵〇 = CString::new("rime")?;
+    let mut 測試錯誤 = None;
+    for 方案 in &待測方案列表 {
+        let 方案〇 = CString::new(方案.as_str())?;
+        if rime_api_call!(select_schema, 會話, 方案〇.as_ptr()) == 0 {
+            測試錯誤 = Some(anyhow!("無法選中輸入方案: {}", 方案));
+            break;
+        }
+        if rime_api_call!(simulate_key_sequence, 會話, 測試按鍵〇.as_ptr()) == 0 {
+            測試錯誤 = Some(anyhow!("輸入方案按鍵模擬失敗: {}", 方案));
+            break;
+        }
+        rime_api_call!(clear_composition, 會話);
+        log::info!("方案測試通過: {}", 方案);
+    }
+
+    rime_api_call!(destroy_session, 會話);
+    rime_api_call!(finalize);
+
+    // 恢復或清理測試期間產生的臨時 user.yaml，保持 STAGING_DIR 純淨可重現
+    match 原有內容 {
+        Some(bytes) => {
+            let _ = std::fs::write(&用戶配置文件, bytes);
+        }
+        None => {
+            if 用戶配置文件.exists() {
+                let _ = std::fs::remove_file(&用戶配置文件);
+            }
+        }
+    }
+
+    if let Some(err) = 測試錯誤 {
+        return Err(err);
+    }
     Ok(())
 }
 
@@ -143,6 +247,7 @@ mod tests {
     use claims::assert_ok;
     use lazy_static::lazy_static;
     use std::fs::{read_to_string, write};
+    use std::path::PathBuf;
     use std::sync::{Once, RwLock};
 
     lazy_static! {
@@ -344,5 +449,45 @@ schema:
             r#"var:
   previously_selected_schema: terran"#
         ));
+    }
+
+    #[test]
+    fn 測試源碼與整備分離構建及測試() {
+        let _佔 = 佔用引擎機位.write().unwrap();
+        let 專用測試場地 = std::env::temp_dir().join("rime_levers_tests_src_stage");
+        if 專用測試場地.exists() {
+            assert_ok!(std::fs::remove_dir_all(&專用測試場地));
+        }
+        let 源碼場地 = 專用測試場地.join("src");
+        let 整備場地 = 專用測試場地.join("stage");
+
+        assert_ok!(設置引擎構建與整備參數(&源碼場地, &整備場地));
+        assert_ok!(write(
+            源碼場地.join("default.yaml"),
+            r#"
+schema_list:
+  - schema: ohmyrime
+menu:
+  page_size: 5
+"#,
+        ));
+        assert_ok!(write(
+            源碼場地.join("ohmyrime.schema.yaml"),
+            r#"
+schema:
+  schema_id: ohmyrime
+  name: OhMyRime
+"#,
+        ));
+
+        assert_ok!(製備輸入法固件());
+
+        // 編譯產物應位於 stage/build/ 而非 src/build/
+        assert!(整備場地.join("build/default.yaml").exists());
+        assert!(整備場地.join("build/ohmyrime.schema.yaml").exists());
+        assert!(!源碼場地.join("build/ohmyrime.schema.yaml").exists());
+
+        // 在 stage/ 場地驗證構建結果
+        assert_ok!(測試輸入法固件(&整備場地, &["ohmyrime".to_owned()]));
     }
 }

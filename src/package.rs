@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::recipe::配方名片;
 
@@ -25,10 +25,8 @@ impl 配方包<'_> {
         self.配方.版本.as_deref()
     }
 
-    pub fn 本地路徑(&self) -> PathBuf {
-        ["pkg", self.配方.方家.as_str(), self.配方.名字.as_str()]
-            .iter()
-            .collect()
+    pub fn 本地路徑(&self, 下載場地: &Path) -> PathBuf {
+        下載場地.join(&self.配方.方家).join(&self.配方.名字)
     }
 
     pub fn 按倉庫分組<'a>(
